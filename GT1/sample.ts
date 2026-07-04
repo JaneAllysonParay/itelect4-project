@@ -1,5 +1,5 @@
 interface User {
-    id: number; 
+    id: number | string; 
     name: string;
     email: string;
     role: "student" | "instructor" | "admin";
@@ -7,7 +7,7 @@ interface User {
     score?: number; // Optional property
 }
 
-function getUser(id: number): User {
+function getUser(id: number | string): User {
     return {
     id: id,
     name: "Juan dela Cruz",
