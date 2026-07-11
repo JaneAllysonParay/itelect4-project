@@ -91,7 +91,12 @@ const courseResponse: ApiResponse<Course[]> = {
 console.log(userResponse.data.name); // Juan dela Cruz
 
 // ===== USING UTILITY TYPES =====
-import { UserUpdate, UserPreview, PublicUser, RoleCount } from "../types/index";
+import type {
+  UserUpdate,
+  UserPreview,
+  PublicUser,
+  RoleCount,
+} from "../types/index";
 // Partial<T> -- update payload only needs the changed fields
 const patch: UserUpdate = { name: "Juan D. Cruz" };
 // Pick<T,K> -- a lightweight preview object
