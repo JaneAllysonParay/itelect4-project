@@ -74,8 +74,8 @@ export type DateFormatter = (date: Date) => string;
 const itemId: ID = "LF-2026-001";
 
 const itemLocation: Location = {
-  building: "St. La Salle Building",
-  room: "Room 301",
+  building: "Sen. Jose Diokno Building",
+  room: "E-Library",
 };
 
 const formatDate: DateFormatter = (date) => date.toLocaleDateString();

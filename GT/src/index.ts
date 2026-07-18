@@ -129,20 +129,20 @@ console.log(itemResponse.data[0]?.title);
 
 // Partial<T>
 const patch: UserUpdate = {
-  name: "Juan D. Cruz",
+  name: "Jane Allyson L. Paray",
 };
 
 // Pick<T,K>
 const preview: UserPreview = {
   id: 1,
-  name: "Juan Dela Cruz",
+  name: "Jane Allyson L. Paray",
   role: "student",
 };
 
 // Omit<T,K>
 const publicProfile: PublicUser = {
   id: 1,
-  name: "Juan Dela Cruz",
+  name: "Jane Allyson L. Paray",
   role: "student",
 };
 
