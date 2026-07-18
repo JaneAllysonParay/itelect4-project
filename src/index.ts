@@ -1,6 +1,6 @@
 // At the TOP of src/index.ts
-import type { User, Course, Submission } from "../types/index";
-import type { StringOrNumber } from "../types/index";
+import type { User, Course, Submission } from "./types/index";
+import type { StringOrNumber } from "./types/index";
 
 // ===== PRIMITIVE TYPE ANNOTATIONS =====
 // Variables with explicit types
@@ -79,7 +79,7 @@ console.log(firstUser?.name); // Juan dela Cruz
 console.log(foundUser?.email); // juan@example.com
 
 // ----- src/index.ts -----
-import type { ApiResponse } from "../types/index";
+import type { ApiResponse } from "./types/index";
 const userResponse: ApiResponse<User> = {
   success: true,
   data: student,
@@ -96,7 +96,7 @@ import type {
   UserPreview,
   PublicUser,
   RoleCount,
-} from "../types/index";
+} from "./types/index";
 // Partial<T> -- update payload only needs the changed fields
 const patch: UserUpdate = { name: "Juan D. Cruz" };
 // Pick<T,K> -- a lightweight preview object
@@ -118,7 +118,7 @@ type NewSubmission = ReturnType<typeof makeSubmission>;
 const gt1Submission: NewSubmission = makeSubmission("ITELECT4");
 
 // ===== USING ENUMS =====
-import { SubmissionStatus, Role } from "../types/index";
+import { SubmissionStatus, Role } from "./types/index";
 let status: SubmissionStatus = SubmissionStatus.Pending;
 console.log(SubmissionStatus[status]); // "Pending" -- reverse mapping
 status = SubmissionStatus.Graded;
