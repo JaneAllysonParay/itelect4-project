@@ -100,8 +100,8 @@ export type StudentWithCourse = User & {
 };
 const topStudent: StudentWithCourse = {
   id: 1,
-  name: "Maria Santos",
-  email: "m@example.com",
+  name: "Jane Allyson L. Paray",
+  email: "jane.allyson@example.com",
   role: "student",
   isActive: true,
   enrolledCourse: {
