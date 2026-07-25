@@ -1,5 +1,5 @@
 // src/components/UserCard.tsx
-import type { User } from "../types/index";
+import type { User } from "../types";
 interface UserCardProps {
   user: User;
 }
@@ -9,6 +9,7 @@ function UserCard({ user }: UserCardProps) {
       <h3>{user.name}</h3>
       <p>{user.email}</p>
       <p>Role: {user.role}</p>
+      <p>Status: {user.isActive ? "Active" : "Inactive"}</p>
     </div>
   );
 }

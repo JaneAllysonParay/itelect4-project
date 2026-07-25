@@ -30,12 +30,22 @@ const claims: Claim[] = [
   },
 ];
 function App() {
+  const handleViewItem = (item: Item): void => {
+    alert(`Viewed Item: ${item.title}`);
+  };
+
   return (
     <div className="app">
-      <UserCard user={student} onSelect={(u) => console.log(u)} />
-      <ItemCard item={lostItem} />
+      <h1>Welcome to the Lost and Found System</h1>
+      <UserCard user={student} />
+
+      <ItemCard
+        item={lostItem}
+        onSelect={handleViewItem}
+      />
       <ClaimCard claim={claims[0]} />
     </div>
   );
 }
+
 export default App;
