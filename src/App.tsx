@@ -46,7 +46,8 @@ function App() {
   const previousSearch = usePrevious(searchTerm);
   // useRef<T>(null) -- T is the DOM element type
   const searchInputRef = useRef<HTMLInputElement>(null);
-
+  const [isDarkMode, toggleDarkMode] = useToggle(false);
+  
   // Focus the input programmatically (e.g. after loading finishes)
   const focusSearch = (): void => {
     searchInputRef.current?.focus();
@@ -70,26 +71,39 @@ function App() {
   );
   if (isLoading) return <p>Loading courses...</p>;
 
+  
   return (
-    <div className="app">
-      <input
-        ref={searchInputRef}
-        value={searchTerm}
-        type="text"
-        placeholder="Search courses..."
-        onChange={handleSearchChange}
-      />
-      {previousSearch !== undefined && previousSearch !== searchTerm && (
-        <p>Previous search: "{previousSearch}"</p>
-      )}
-      <UserCard user={user} onSelect={setSelectedUser} />
-      {selectedUser && <p>Selected: {selectedUser.name}</p>}
-      <button onClick={toggleDetails}>
-        {showDetails ? "Hide" : "Show"} Details
-      </button>
-      {filteredCourses.map((c) => (
-        <CourseCard key={c.code} course={c} />
-      ))}
+    <div className={isDarkMode ? "dark" : ""}>
+      <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-900">
+        <input
+          ref={searchInputRef}
+          value={searchTerm}
+          type="text"
+          placeholder="Search courses..."
+          onChange={handleSearchChange}
+        />
+        {previousSearch !== undefined && previousSearch !== searchTerm && (
+          <p>Previous search: "{previousSearch}"</p>
+        )}
+        <button onClick={toggleDarkMode}
+          className="rounded bg-gray-800 px-3 py-1.5 text-sm text-white 
+        dark:bg-gray-200 dark:text-gray-900">
+          {isDarkMode ? "Light Mode" : "Dark Mode"}
+        </button>
+        <div
+          className="mt-6 grid grid-cols-1 gap-4 // <-- NEW grid wrapper
+sm:grid-cols-2 lg:grid-cols-3"
+        >
+          <UserCard user={user} onSelect={setSelectedUser} />
+          {selectedUser && <p>Selected: {selectedUser.name}</p>}
+          <button onClick={toggleDetails}>
+            {showDetails ? "Hide" : "Show"} Details
+          </button>
+          {filteredCourses.map((c) => (
+            <CourseCard key={c.code} course={c} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
