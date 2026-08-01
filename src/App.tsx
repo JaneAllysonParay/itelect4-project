@@ -47,7 +47,8 @@ function App() {
   // useRef<T>(null) -- T is the DOM element type
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [isDarkMode, toggleDarkMode] = useToggle(false);
-  
+  const [isError, setIsError] = useState<boolean>(false);
+
   // Focus the input programmatically (e.g. after loading finishes)
   const focusSearch = (): void => {
     searchInputRef.current?.focus();
@@ -69,9 +70,20 @@ function App() {
   const filteredCourses = courses.filter((c) =>
     c.title.toLowerCase().includes(searchTerm.toLowerCase()),
   );
-  if (isLoading) return <p>Loading courses...</p>;
+  if (isLoading) {
+    return (
+      <div className="animate-pulse p-6 text-gray-500">Loading courses...</div>
+    );
+  }
+  if (isError) {
+    // <-- NEW block
+    return (
+      <div className="m-6 rounded-lg bg-red-50 p-4 text-red-700">
+        Could not load courses. Please try again.
+      </div>
+    );
+  }
 
-  
   return (
     <div className={isDarkMode ? "dark" : ""}>
       <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-900">
@@ -85,9 +97,11 @@ function App() {
         {previousSearch !== undefined && previousSearch !== searchTerm && (
           <p>Previous search: "{previousSearch}"</p>
         )}
-        <button onClick={toggleDarkMode}
+        <button
+          onClick={toggleDarkMode}
           className="rounded bg-gray-800 px-3 py-1.5 text-sm text-white 
-        dark:bg-gray-200 dark:text-gray-900">
+        dark:bg-gray-200 dark:text-gray-900"
+        >
           {isDarkMode ? "Light Mode" : "Dark Mode"}
         </button>
         <div
