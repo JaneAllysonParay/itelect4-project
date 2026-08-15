@@ -1,56 +1,27 @@
-import React from "react";
-import type { Item } from "../types";
+import type { Item } from "../types/index";
 
 interface ItemCardProps {
   item: Item;
-  onSelect: (item: Item) => void;
-  variant?: "default" | "compact";
 }
 
-const ItemCard: React.FC<ItemCardProps> = ({
-  item,
-  onSelect,
-  variant = "default",
-}) => {
-  const isCompact = variant === "compact";
-
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>): void => {
-    event.preventDefault();
-    onSelect(item);
-  };
-
+function ItemCard({ item }: ItemCardProps) {
   return (
-    <div
-      className={`rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 ${
-        isCompact ? "p-3" : "p-5"
-      }`}
-    >
-      <h3
-        className={`font-bold text-gray-900 dark:text-white ${
-          isCompact ? "text-sm" : "text-lg"
-        }`}
-      >
+    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <h3 className="text-lg font-bold text-gray-900 dark:text-white">
         {item.title}
       </h3>
 
-      {!isCompact && (
-        <p className="text-gray-600 dark:text-gray-300">{item.description}</p>
-      )}
+      <p className="text-gray-600 dark:text-gray-300">{item.description}</p>
 
-      <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-        <p>Location: {item.location}</p>
-        <p>Status: {item.status}</p>
-      </div>
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        Location: {item.location}
+      </p>
 
-      <button
-        type="button"
-        onClick={handleClick}
-        className="mt-3 rounded bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-      >
-        View This Item
-      </button>
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        Status: {item.status}
+      </p>
     </div>
   );
-};
+}
 
 export default ItemCard;

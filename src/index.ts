@@ -33,6 +33,9 @@ function logMessage(message: string): void {
 }
 
 logMessage(greet(projectName, currentYear));
+console.log(isWebApp);
+console.log(nothing);
+console.log(notSet);
 
 // ===== USING INTERFACES =====
 
@@ -152,6 +155,11 @@ const userCount: UserCount = {
   security: 5,
   admin: 2,
 };
+
+console.log(patch);
+console.log(preview);
+console.log(publicProfile);
+console.log(userCount);
 
 // ===== ReturnType<T> =====
 
