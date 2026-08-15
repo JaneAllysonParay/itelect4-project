@@ -78,6 +78,9 @@ const itemLocation: Location = {
   room: "E-Library",
 };
 
+console.log(itemLocation);
+
+
 const formatDate: DateFormatter = (date) => date.toLocaleDateString();
 
 console.log(itemId);
@@ -122,6 +125,8 @@ const lostItem: ItemWithOwner = {
 
   claimCount: 2,
 };
+
+console.log(lostItem);
 
 // ===== GENERIC INTERFACE =====
 
