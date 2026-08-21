@@ -1,5 +1,4 @@
 // ===== INTERFACES =====
-// An interface defines the SHAPE of an object.
 
 export interface User {
   id: number;
@@ -42,14 +41,12 @@ export type UserCount = Record<"student" | "security" | "admin", number>;
 
 // ===== ENUMS =====
 
-// Regular enum
 export enum ClaimStatus {
   Pending,
   Approved,
   Rejected,
 }
 
-// const enum
 export const enum UserRole {
   Student = "student",
   Security = "security",
@@ -58,19 +55,15 @@ export const enum UserRole {
 
 // ===== TYPE ALIASES =====
 
-// Alias for string or number IDs
 export type ID = string | number;
 
-// Alias for item location
 export type Location = {
   building: string;
   room: string;
 };
 
-// Alias for formatting dates
 export type DateFormatter = (date: Date) => string;
 
-// Using them
 const itemId: ID = "LF-2026-001";
 
 const itemLocation: Location = {
@@ -79,7 +72,6 @@ const itemLocation: Location = {
 };
 
 console.log(itemLocation);
-
 
 const formatDate: DateFormatter = (date) => date.toLocaleDateString();
 
@@ -135,3 +127,21 @@ export interface ApiResponse<T> {
   data: T;
   message?: string;
 }
+
+// ===== API TYPES =====
+
+// JSON stores dateReported as a string, not a Date object.
+export type ApiItem = Omit<Item, "dateReported"> & {
+  dateReported: string;
+};
+
+// JSON stores claimDate as a string.
+// json-server generates the id when a new claim is created.
+export type ApiClaim = Omit<Claim, "id" | "claimDate"> & {
+  id: string;
+  claimDate: string;
+};
+
+// What we SEND when creating a claim.
+// No id yet because json-server creates it.
+export type NewClaim = Omit<ApiClaim, "id">;

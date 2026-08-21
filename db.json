@@ -1,0 +1,48 @@
+{
+  "student": {
+    "id": 1,
+    "name": "Jane Allyson L. Paray",
+    "email": "jane_allyson_paray@dlsl.edu.ph",
+    "role": "student",
+    "isActive": true
+  },
+  "lostItems": [
+    {
+      "id": "1",
+      "title": "Blue Tumbler",
+      "description": "1 Liter Blue Tumbler",
+      "location": "E-Library",
+      "dateReported": "2026-08-21T00:00:00.000Z",
+      "status": "lost",
+      "ownerId": 1
+    },
+    {
+      "id": "2",
+      "title": "Black Umbrella",
+      "description": "Foldable black umbrella",
+      "location": "College Lobby",
+      "dateReported": "2026-08-21T00:00:00.000Z",
+      "status": "lost",
+      "ownerId": 1
+    }
+  ],
+  "claims": [
+    {
+      "id": "1",
+      "itemId": 1,
+      "claimantId": 2,
+      "claimDate": "2026-08-21T00:00:00.000Z",
+      "status": "approved",
+      "proof": "Student ID presented"
+    },
+    {
+      "itemId": 1,
+      "claimantId": 1,
+      "claimDate": "2026-08-21T14:16:17.889Z",
+      "status": "pending",
+      "proof": "ID",
+      "id": "dhlcVsNmwVk"
+    }
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
+}

@@ -1,23 +1,31 @@
+import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router";
+import type { ApiItem } from "../types/index";
 import ItemCard from "../components/ItemCard";
-import { allLostItems } from "../data/mockData";
+import { fetchItemById } from "../api/client";
 
 function ItemDetailPage() {
-  // Reads whatever is in the :id slot of the URL
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // Convert the URL parameter from string to number
-  const itemId = Number(id);
+  const { data, isPending, isError, error } = useQuery<ApiItem>({
+    queryKey: ["items", id],
+    queryFn: () => fetchItemById(id!),
+    enabled: id !== undefined,
+  });
 
-  // Turn that ID into a real Item object
-  const item = allLostItems.find((i) => i.id === itemId);
+  if (isPending) {
+    return (
+      <div className="animate-pulse p-6 text-gray-900 dark:text-white">
+        Loading item...
+      </div>
+    );
+  }
 
-  // The URL is user input -- they can type anything. Handle that.
-  if (item === undefined) {
+  if (isError) {
     return (
       <div className="rounded-lg bg-red-50 p-4 text-red-700">
-        No item found with ID "{id}".
+        {error.message}
       </div>
     );
   }
@@ -25,11 +33,11 @@ function ItemDetailPage() {
   return (
     <div>
       <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-        {item.title}
+        {data.title}
       </h2>
 
       <div className="max-w-sm">
-        <ItemCard item={item} />
+        <ItemCard item={data} />
       </div>
 
       <button
