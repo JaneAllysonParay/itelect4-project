@@ -1,7 +1,7 @@
-import type { Item } from "../types/index";
+import type { ApiItem } from "../types/index";
 
 interface ItemCardProps {
-  item: Item;
+  item: ApiItem;
 }
 
 function ItemCard({ item }: ItemCardProps) {

@@ -1,43 +1,17 @@
-import type { User, Item, Claim } from "../types/index";
+// src/data/mockData.ts
+
+// allLostItems and allClaims are DELETED.
+// They now live in db.json and are fetched through src/api/client.ts.
+//
+// `student` stays because there is no /users endpoint yet
+// and the current user is still hard-coded.
+
+import type { User } from "../types/index";
 
 export const student: User = {
-    id: 1,
-    name: "Jane Allyson L. Paray",
-    email: "jane_allyson_paray@dlsl.edu.ph",
-    role: "student",
-    isActive: true,
+  id: 1,
+  name: "Jane Allyson L. Paray",
+  email: "jane_allyson_paray@dlsl.edu.ph",
+  role: "student",
+  isActive: true,
 };
-
-export const allLostItems: Item[] = [
-    {
-    id: 1,
-    title: "Blue Tumbler",
-    description: "1 Liter Blue Tumbler",
-    location: "E-Library",
-    dateReported: new Date(),
-    status: "lost",
-    ownerId: 1,
-},
-{
-  id: 2,
-  title: "Black Umbrella",
-  description: "Foldable black umbrella",
-  location: "College Lobby",
-  dateReported: new Date(),
-  status: "lost",
-  ownerId: 1,
-},
-];
-
-export const allClaims: Claim[] = [
-    {
-    id: 1,
-    itemId: 1,
-    claimantId: 2,
-    claimDate: new Date(),
-    status: "approved",
-    proof: "Student ID presented",
-    }
-];
-
-

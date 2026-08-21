@@ -1,8 +1,7 @@
-// src/components/ClaimCard.tsx
-import type { Claim } from "../types";
+import type { ApiClaim } from "../types/index";
 
 interface ClaimCardProps {
-  claim: Claim;
+  claim: ApiClaim;
   variant?: "default" | "compact";
 }
 
@@ -29,6 +28,5 @@ function ClaimCard({ claim }: ClaimCardProps) {
     </div>
   );
 }
-
 
 export default ClaimCard;
