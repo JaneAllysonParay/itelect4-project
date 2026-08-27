@@ -42,6 +42,38 @@
       "status": "pending",
       "proof": "ID",
       "id": "dhlcVsNmwVk"
+    },
+    {
+      "itemId": 1,
+      "claimantId": 1,
+      "claimDate": "2026-08-27T13:08:21.189Z",
+      "status": "pending",
+      "proof": "Student ID",
+      "id": "RPMdbtvQsGM"
+    },
+    {
+      "itemId": 2,
+      "claimantId": 1,
+      "claimDate": "2026-08-27T13:09:43.544Z",
+      "status": "pending",
+      "proof": "Student ID",
+      "id": "56ptTlB95gk"
+    },
+    {
+      "itemId": 1,
+      "claimantId": 1,
+      "claimDate": "2026-08-27T13:10:11.096Z",
+      "status": "pending",
+      "proof": "Blue Keychain",
+      "id": "JiJBIcYpHAg"
+    },
+    {
+      "itemId": 1,
+      "claimantId": 1,
+      "claimDate": "2026-08-27T14:28:21.375Z",
+      "status": "pending",
+      "proof": "Student ID presented",
+      "id": "6dF6iA9YXi4"
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"
