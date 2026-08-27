@@ -1,5 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
+
+import { Input } from "@/components/ui/input";
+
 import type { ApiItem } from "../types/index";
 import ItemCard from "../components/ItemCard";
 import usePrevious from "../hooks/usePrevious";
@@ -45,11 +48,10 @@ function ItemsPage() {
         Items
       </h2>
 
-      <input
+      <Input
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         placeholder="Search items..."
-        className="w-full rounded border border-gray-300 bg-white p-2 text-gray-900 placeholder:text-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400"
       />
 
       {previousSearch !== undefined && previousSearch !== searchTerm && (
