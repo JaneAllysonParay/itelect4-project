@@ -81,7 +81,7 @@ function ClaimsPage() {
   return (
     <div>
       <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-        My Claims
+        Claims
       </h2>
 
       <form

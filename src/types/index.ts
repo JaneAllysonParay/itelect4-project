@@ -131,7 +131,8 @@ export interface ApiResponse<T> {
 // ===== API TYPES =====
 
 // JSON stores dateReported as a string, not a Date object.
-export type ApiItem = Omit<Item, "dateReported"> & {
+export type ApiItem = Omit<Item, "id" | "dateReported"> & {
+  id: string;
   dateReported: string;
 };
 

@@ -37,6 +37,38 @@ console.log(isWebApp);
 console.log(nothing);
 console.log(notSet);
 
+// ===== SPECIAL TYPES =====
+
+// any -- disables TypeScript type checking for this value.
+// This is included only as a Session 1 demonstration.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let anything: any = "hello";
+
+console.log(anything);
+
+anything = 42;
+console.log(anything);
+
+anything = true;
+console.log(anything);
+
+// unknown -- safer than any because the value must be
+// narrowed before it can be used safely.
+const userInput: unknown = "lost wallet";
+
+if (typeof userInput === "string") {
+  console.log(userInput.toUpperCase());
+}
+
+// never -- represents a function that can never complete normally.
+// Referencing the function below demonstrates the type without
+// actually calling it and crashing the program.
+function throwError(message: string): never {
+  throw new Error(message);
+}
+
+console.log(typeof throwError);
+
 // ===== USING INTERFACES =====
 
 const student: User = {
@@ -60,7 +92,7 @@ const lostItem: Item = {
 const claim: Claim = {
   id: 1,
   itemId: 1,
-  claimantId: 2,
+  claimantId: 1,
   claimDate: new Date(),
   status: "approved",
   proof: "Student ID presented",
@@ -167,10 +199,10 @@ function createClaim(itemId: number) {
   return {
     id: 1,
     itemId,
-    claimantId: 2,
+    claimantId: 1,
     claimDate: new Date(),
     status: "approved" as const,
-    proof: "Student ID presented",
+    proof: "Student ID",
   };
 }
 
