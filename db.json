@@ -1,11 +1,4 @@
 {
-  "student": {
-    "id": 1,
-    "name": "Jane Allyson L. Paray",
-    "email": "jane_allyson_paray@dlsl.edu.ph",
-    "role": "student",
-    "isActive": true
-  },
   "lostItems": [
     {
       "id": "1",
@@ -30,7 +23,7 @@
     {
       "id": "1",
       "itemId": 1,
-      "claimantId": 2,
+      "claimantId": 1,
       "claimDate": "2026-08-21T00:00:00.000Z",
       "status": "approved",
       "proof": "Student ID presented"
@@ -40,7 +33,7 @@
       "claimantId": 1,
       "claimDate": "2026-08-21T14:16:17.889Z",
       "status": "pending",
-      "proof": "ID",
+      "proof": "Student ID",
       "id": "dhlcVsNmwVk"
     },
     {
@@ -75,6 +68,5 @@
       "proof": "Student ID presented",
       "id": "6dF6iA9YXi4"
     }
-  ],
-  "$schema": "./node_modules/json-server/schema.json"
+  ]
 }
