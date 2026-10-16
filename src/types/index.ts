@@ -130,19 +130,35 @@ export interface ApiResponse<T> {
 
 // ===== API TYPES =====
 
-// JSON stores dateReported as a string, not a Date object.
-export type ApiItem = Omit<Item, "id" | "dateReported"> & {
+// The API serializes dateReported as an ISO string.
+export type ApiItem = Omit<Item, "id" | "ownerId" | "dateReported"> & {
   id: string;
+  ownerId: string;
   dateReported: string;
 };
 
-// JSON stores claimDate as a string.
-// json-server generates the id when a new claim is created.
-export type ApiClaim = Omit<Claim, "id" | "claimDate"> & {
+// The API serializes claimDate as an ISO string and generates the Claim ID.
+export type ApiClaim = Omit<
+  Claim,
+  "id" | "itemId" | "claimantId" | "claimDate"
+> & {
   id: string;
+  itemId: string;
+  claimantId: string;
   claimDate: string;
 };
 
-// What we SEND when creating a claim.
-// No id yet because json-server creates it.
-export type NewClaim = Omit<ApiClaim, "id">;
+// The browser chooses only the item and proof. The API supplies claim ownership,
+// date, status, and ID.
+export type NewClaim = Pick<Claim, "proof"> & {
+  itemId: string;
+};
+
+export type ApiUser = Omit<User, "id"> & {
+  id: string;
+};
+
+export interface AuthReply {
+  token: string;
+  user: ApiUser;
+}
