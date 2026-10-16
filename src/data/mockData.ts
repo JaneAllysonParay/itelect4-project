@@ -1,10 +1,7 @@
 // src/data/mockData.ts
 
-// allLostItems and allClaims are DELETED.
-// They now live in db.json and are fetched through src/api/client.ts.
-//
-// `student` stays because there is no /users endpoint yet
-// and the current user is still hard-coded.
+// Dashboard sample user retained from the GT3 exercise; Item and Claim data now
+// load from the backend API. The API does not expose a user-profile endpoint.
 
 import type { User } from "../types/index";
 

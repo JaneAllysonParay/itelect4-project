@@ -1,56 +1,99 @@
-// src/api/client.ts
-// Every call to json-server lives in this one file.
+import type {
+  ApiClaim,
+  ApiItem,
+  ApiUser,
+  AuthReply,
+  NewClaim,
+} from "../types/index";
+import useAuthStore from "../store/authStore";
 
-import type { ApiItem, ApiClaim, NewClaim } from "../types/index";
+export const API_URL = import.meta.env.VITE_API_URL;
 
-export const API_URL = "http://localhost:3001";
-
-// GET /lostItems -> the whole list
-export async function fetchItems(): Promise<ApiItem[]> {
-  const res = await fetch(`${API_URL}/lostItems`);
-
-  if (!res.ok) {
-    throw new Error("Could not load items");
-  }
-
-  return res.json();
+if (!API_URL) {
+  throw new Error(
+    "VITE_API_URL is missing. Copy .env.example to .env, fill it in, and restart npm run dev.",
+  );
 }
 
-// GET /lostItems/1 -> one item
-export async function fetchItemById(id: string): Promise<ApiItem> {
-  const res = await fetch(`${API_URL}/lostItems/${id}`);
-
-  if (!res.ok) {
-    throw new Error(`No item found with ID "${id}".`);
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
   }
 
-  return res.json();
-}
-
-// GET /claims
-export async function fetchClaims(): Promise<ApiClaim[]> {
-  const res = await fetch(`${API_URL}/claims`);
-
-  if (!res.ok) {
-    throw new Error("Could not load claims");
+  const token = useAuthStore.getState().token;
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
-  return res.json();
-}
-
-// POST /claims -> the row the server saved, with the id it made
-export async function createClaim(newClaim: NewClaim): Promise<ApiClaim> {
-  const res = await fetch(`${API_URL}/claims`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(newClaim),
+  const response = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers,
   });
 
-  if (!res.ok) {
-    throw new Error("Could not save the claim");
+  if (!response.ok) {
+    let message = `Request failed (${response.status})`;
+    try {
+      const body: unknown = await response.json();
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "message" in body &&
+        typeof body.message === "string"
+      ) {
+        message = body.message;
+      }
+    } catch {
+      // Keep the status-based fallback when the response has no JSON body.
+    }
+    throw new Error(message);
   }
 
-  return res.json();
+  return response.json() as Promise<T>;
+}
+
+export function fetchItems(): Promise<ApiItem[]> {
+  return request<ApiItem[]>("/api/items");
+}
+
+export function fetchItemById(id: string): Promise<ApiItem> {
+  return request<ApiItem>(`/api/items/${id}`);
+}
+
+export function fetchClaims(): Promise<ApiClaim[]> {
+  return request<ApiClaim[]>("/api/claims");
+}
+
+export function createClaim(newClaim: NewClaim): Promise<ApiClaim> {
+  return request<ApiClaim>("/api/claims", {
+    method: "POST",
+    body: JSON.stringify(newClaim),
+  });
+}
+
+export interface RegisterCredentials {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export function registerUser(
+  credentials: RegisterCredentials,
+): Promise<ApiUser> {
+  return request<ApiUser>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(credentials),
+  });
+}
+
+export function loginUser(credentials: LoginCredentials): Promise<AuthReply> {
+  return request<AuthReply>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(credentials),
+  });
 }

@@ -14,29 +14,26 @@ Technology:
 - React Router
 - Zustand
 - TanStack Query
-- json-server
 - React Hook Form
 - Zod
 - Shadcn UI
+- Express, MongoDB, Mongoose, and JWT API (in the sibling `itelect4-backend` repository)
 
-Installation:
-npm install
+Local development:
 
-Terminal 1:
-npm run api
+1. Start the backend from `itelect4-backend` after configuring its `.env` from `.env.example`:
+   `npm install` then `npm run dev` (API at `http://localhost:4000`).
+2. In this repository, copy `.env.example` to `.env` and set `VITE_API_URL=http://localhost:4000`.
+3. Run `npm install` then `npm run dev` (Vite at `http://localhost:5173`).
 
-Terminal 2:
-npm run dev
+Production build: `npm run build`
 
-Build:
-npm run build
-
-API:
-http://localhost:3001
+API base URL: set with `VITE_API_URL` (no trailing slash and no `/api` suffix).
 
 Main routes:
 /
 /items
 /items/:id
 /login
+/register
 /claims
