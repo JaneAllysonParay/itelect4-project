@@ -1,4 +1,5 @@
 import type {
+  AiItemReportReview,
   ApiClaim,
   ApiItem,
   ApiUser,
@@ -62,6 +63,13 @@ export function fetchItemById(id: string): Promise<ApiItem> {
 
 export function fetchClaims(): Promise<ApiClaim[]> {
   return request<ApiClaim[]>("/api/claims");
+}
+
+export function askAi(prompt: string): Promise<AiItemReportReview> {
+  return request<AiItemReportReview>("/api/ai", {
+    method: "POST",
+    body: JSON.stringify({ prompt }),
+  });
 }
 
 export function createClaim(newClaim: NewClaim): Promise<ApiClaim> {
