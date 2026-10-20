@@ -1,16 +1,14 @@
 Campus Lost & Found Tracker
 
-Live Deployment
-- Frontend: https://itelect4-project-pi.vercel.app
-- Backend: https://itelect4-backend-woad.vercel.app
-
 Project overview
 Core entities:
+
 - User
 - Item
 - Claim
 
 Technology:
+
 - React
 - TypeScript
 - Vite
@@ -41,3 +39,8 @@ Main routes:
 /login
 /register
 /claims
+
+## Live Deployment
+
+- Frontend: https://itelect4-project-pi.vercel.app
+- Backend: https://itelect4-backend-woad.vercel.app

@@ -7,6 +7,7 @@ import ItemDetailPage from "./pages/ItemDetailPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ClaimsPage from "./pages/ClaimsPage";
+import ReviewPage from "./pages/ReviewPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="claims" element={<ClaimsPage />} />
+          <Route path="review" element={<ReviewPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

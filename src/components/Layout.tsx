@@ -38,6 +38,9 @@ dark:bg-gray-800"
           <NavLink to="/claims" className={linkClass}>
             Claims
           </NavLink>
+          <NavLink to="/review" className={linkClass}>
+            AI Report Review
+          </NavLink>
           {userName === null ? (
             <>
               <NavLink to="/login" className={linkClass}>
