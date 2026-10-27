@@ -154,6 +154,14 @@ export type NewClaim = Pick<Claim, "proof"> & {
   itemId: string;
 };
 
+export type NewItem = Pick<
+  ApiItem,
+  "title" | "description" | "location" | "status"
+>;
+
+export type ItemUpdate = Partial<NewItem>;
+export type ClaimDecisionStatus = Exclude<ApiClaim["status"], "pending">;
+
 export type ApiUser = Omit<User, "id"> & {
   id: string;
 };

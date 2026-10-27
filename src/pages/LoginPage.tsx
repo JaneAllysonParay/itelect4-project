@@ -26,7 +26,7 @@ function LoginPage() {
   const logIn = useMutation({
     mutationFn: loginUser,
     onSuccess: (reply) => {
-      setSession(reply.token, reply.user.name);
+      setSession(reply.token, reply.user.id, reply.user.name);
       navigate("/claims");
     },
   });

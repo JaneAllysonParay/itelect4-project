@@ -3,8 +3,11 @@ import type {
   ApiClaim,
   ApiItem,
   ApiUser,
+  ClaimDecisionStatus,
   AuthReply,
   NewClaim,
+  NewItem,
+  ItemUpdate,
 } from "../types/index";
 import useAuthStore from "../store/authStore";
 
@@ -50,6 +53,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new Error(message);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json() as Promise<T>;
 }
 
@@ -61,8 +68,42 @@ export function fetchItemById(id: string): Promise<ApiItem> {
   return request<ApiItem>(`/api/items/${id}`);
 }
 
+export function createItem(newItem: NewItem): Promise<ApiItem> {
+  return request<ApiItem>("/api/items", {
+    method: "POST",
+    body: JSON.stringify(newItem),
+  });
+}
+
+export function updateItem(id: string, updates: ItemUpdate): Promise<ApiItem> {
+  return request<ApiItem>(`/api/items/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+export function deleteItem(id: string): Promise<void> {
+  return request<void>(`/api/items/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export function fetchClaims(): Promise<ApiClaim[]> {
   return request<ApiClaim[]>("/api/claims");
+}
+
+export function fetchReceivedClaims(): Promise<ApiClaim[]> {
+  return request<ApiClaim[]>("/api/claims/received");
+}
+
+export function updateClaimStatus(
+  id: string,
+  status: ClaimDecisionStatus,
+): Promise<ApiClaim> {
+  return request<ApiClaim>(`/api/claims/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
 }
 
 export function askAi(prompt: string): Promise<AiItemReportReview> {

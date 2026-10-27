@@ -7,6 +7,7 @@ import ItemDetailPage from "./pages/ItemDetailPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ClaimsPage from "./pages/ClaimsPage";
+import ItemFormPage from "./pages/ItemFormPage";
 import ReviewPage from "./pages/ReviewPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
@@ -24,6 +25,8 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="claims" element={<ClaimsPage />} />
+          <Route path="items/new" element={<ItemFormPage />} />
+          <Route path="items/:id/edit" element={<ItemFormPage />} />
           <Route path="review" element={<ReviewPage />} />
         </Route>
 
