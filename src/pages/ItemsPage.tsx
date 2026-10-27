@@ -8,6 +8,7 @@ import ItemCard from "../components/ItemCard";
 import usePrevious from "../hooks/usePrevious";
 import useUiStore from "../store/uiStore";
 import { API_URL, fetchItems } from "../api/client";
+import useAuthStore from "../store/authStore";
 
 function ItemsPage() {
   const { data, isPending, isError, error } = useQuery<ApiItem[]>({
@@ -19,6 +20,7 @@ function ItemsPage() {
   const setSearchTerm = useUiStore((state) => state.setSearchTerm);
 
   const previousSearch = usePrevious(searchTerm);
+  const userId = useAuthStore((state) => state.userId);
 
   if (isPending) {
     return (
@@ -44,9 +46,19 @@ function ItemsPage() {
 
   return (
     <div>
-      <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-        Items
-      </h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Items
+        </h2>
+        {userId && (
+          <Link
+            to="/items/new"
+            className="rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+          >
+            Report an item
+          </Link>
+        )}
+      </div>
 
       <Input
         value={searchTerm}

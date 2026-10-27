@@ -2,7 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import type { ApiClaim, ApiItem } from "../types/index";
+import type {
+  ApiClaim,
+  ApiItem,
+  ClaimDecisionStatus,
+} from "../types/index";
 import { claimSchema } from "../schemas/claimSchema";
 import type { ClaimFormValues } from "../schemas/claimSchema";
 import ClaimCard from "../components/ClaimCard";
@@ -11,7 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { fetchClaims, createClaim, fetchItems } from "../api/client";
+import {
+  fetchClaims,
+  createClaim,
+  fetchItems,
+  fetchReceivedClaims,
+  updateClaimStatus,
+} from "../api/client";
 
 function ClaimsPage() {
   const queryClient = useQueryClient();
@@ -45,6 +55,11 @@ function ClaimsPage() {
     queryFn: fetchClaims,
   });
 
+  const receivedClaims = useQuery<ApiClaim[]>({
+    queryKey: ["receivedClaims"],
+    queryFn: fetchReceivedClaims,
+  });
+
   const addClaim = useMutation({
     mutationFn: createClaim,
 
@@ -54,6 +69,18 @@ function ClaimsPage() {
       });
 
       reset();
+    },
+  });
+
+  const decideClaim = useMutation({
+    mutationFn: (decision: { id: string; status: ClaimDecisionStatus }) =>
+      updateClaimStatus(decision.id, decision.status),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["claims"] }),
+        queryClient.invalidateQueries({ queryKey: ["receivedClaims"] }),
+        queryClient.invalidateQueries({ queryKey: ["items"] }),
+      ]);
     },
   });
 
@@ -147,6 +174,58 @@ function ClaimsPage() {
       {addClaim.isError && (
         <p className="mb-4 text-sm text-red-700">{addClaim.error.message}</p>
       )}
+
+      <section className="mb-8">
+        <h3 className="mb-3 text-xl font-semibold text-gray-900 dark:text-white">
+          Claims on your items
+        </h3>
+
+        {receivedClaims.isPending && <p>Loading received claims...</p>}
+        {receivedClaims.isError && (
+          <p className="mb-4 text-sm text-red-700">
+            {receivedClaims.error.message}
+          </p>
+        )}
+        {receivedClaims.data?.length === 0 && (
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            No one has claimed your items yet.
+          </p>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {receivedClaims.data?.map((claim) => (
+            <div key={claim.id}>
+              <ClaimCard claim={claim} />
+              {claim.status === "pending" && (
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    type="button"
+                    disabled={decideClaim.isPending}
+                    onClick={() =>
+                      decideClaim.mutate({ id: claim.id, status: "approved" })
+                    }
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={decideClaim.isPending}
+                    onClick={() =>
+                      decideClaim.mutate({ id: claim.id, status: "rejected" })
+                    }
+                  >
+                    Reject
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        {decideClaim.isError && (
+          <p className="mt-3 text-sm text-red-700">{decideClaim.error.message}</p>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {data.map((claim) => (

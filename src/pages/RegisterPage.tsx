@@ -28,7 +28,7 @@ function RegisterPage() {
       return loginUser({ email: values.email, password: values.password });
     },
     onSuccess: (reply) => {
-      setSession(reply.token, reply.user.name);
+      setSession(reply.token, reply.user.id, reply.user.name);
       navigate("/claims");
     },
   });

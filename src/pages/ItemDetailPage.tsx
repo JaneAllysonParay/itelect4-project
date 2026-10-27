@@ -1,17 +1,29 @@
-import { useQuery } from "@tanstack/react-query";
-import { useParams, useNavigate } from "react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useParams, useNavigate } from "react-router";
 import type { ApiItem } from "../types/index";
 import ItemCard from "../components/ItemCard";
-import { fetchItemById } from "../api/client";
+import { deleteItem, fetchItemById } from "../api/client";
+import useAuthStore from "../store/authStore";
 
 function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const userId = useAuthStore((state) => state.userId);
 
   const { data, isPending, isError, error } = useQuery<ApiItem>({
     queryKey: ["items", id],
     queryFn: () => fetchItemById(id!),
     enabled: id !== undefined,
+  });
+
+  const removeItem = useMutation({
+    mutationFn: deleteItem,
+    onSuccess: async (_result, itemId) => {
+      await queryClient.invalidateQueries({ queryKey: ["items"] });
+      queryClient.removeQueries({ queryKey: ["items", itemId] });
+      navigate("/items");
+    },
   });
 
   if (isPending) {
@@ -39,6 +51,34 @@ function ItemDetailPage() {
       <div className="max-w-sm">
         <ItemCard item={data} />
       </div>
+
+      {data.ownerId === userId && userId !== null && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Link
+            to={`/items/${data.id}/edit`}
+            className="rounded bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+          >
+            Edit item
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("Delete this item? This cannot be undone.")) {
+                removeItem.mutate(data.id);
+              }
+            }}
+            disabled={removeItem.isPending}
+            className="rounded bg-red-700 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-red-800 disabled:opacity-50"
+          >
+            {removeItem.isPending ? "Deleting..." : "Delete item"}
+          </button>
+          {removeItem.isError && (
+            <p className="basis-full text-sm text-red-700">
+              {removeItem.error.message}
+            </p>
+          )}
+        </div>
+      )}
 
       <button
         onClick={() => navigate("/items")}
