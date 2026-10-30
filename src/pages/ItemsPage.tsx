@@ -20,7 +20,7 @@ function ItemsPage() {
   const setSearchTerm = useUiStore((state) => state.setSearchTerm);
 
   const previousSearch = usePrevious(searchTerm);
-  const userId = useAuthStore((state) => state.userId);
+  const token = useAuthStore((state) => state.token);
 
   if (isPending) {
     return (
@@ -50,7 +50,7 @@ function ItemsPage() {
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           Items
         </h2>
-        {userId && (
+        {token !== null && (
           <Link
             to="/items/new"
             className="rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
