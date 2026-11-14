@@ -24,5 +24,10 @@ describe("Campus Lost & Found ItemCard", () => {
 
     expect(screen.getByText("Status: found")).toBeInTheDocument();
     expect(screen.queryByText("Status: lost")).not.toBeInTheDocument();
+
+    rerender(<ItemCard item={{ ...lostTumbler, status: "claimed" }} />);
+
+    expect(screen.getByText("Status: Unavailable for claims")).toBeInTheDocument();
+    expect(screen.queryByText(/returned|handed over|approved/i)).not.toBeInTheDocument();
   });
 });

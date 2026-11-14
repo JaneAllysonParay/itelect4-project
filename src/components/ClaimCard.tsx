@@ -1,12 +1,24 @@
-import type { ApiClaim } from "../types/index";
+import type {
+  ApiClaim,
+  ApiReceivedClaim,
+  ApiReviewClaim,
+} from "../types/index";
 
 interface ClaimCardProps {
-  claim: ApiClaim;
+  claim: ApiClaim | ApiReceivedClaim | ApiReviewClaim;
   variant?: "default" | "compact";
 }
 
+const claimStatusLabel: Record<ApiClaim["status"], string> = {
+  pending: "Awaiting review",
+  approved: "Claim approved",
+  rejected: "Claim rejected",
+};
+
 function ClaimCard({ claim, variant = "default" }: ClaimCardProps) {
   const isCompact = variant === "compact";
+  const hasItemContext = "item" in claim;
+  const item = hasItemContext ? claim.item : null;
 
   return (
     <div
@@ -23,22 +35,62 @@ function ClaimCard({ claim, variant = "default" }: ClaimCardProps) {
       </p>
 
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        Item ID: {claim.itemId}
+        Claim date: {new Date(claim.claimDate).toLocaleDateString()}
       </p>
 
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        Status: {claim.status}
+        Status: {claimStatusLabel[claim.status]}
       </p>
 
       {!isCompact && (
         <>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Claimant ID: {claim.claimantId}
-          </p>
+          {item ? (
+            <div className="mt-2 grid gap-1 border-t border-gray-200 pt-2 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
+              <p className="font-medium text-gray-900 dark:text-white">
+                Item: {item.title}
+              </p>
+              <p>
+                Report type: {item.status === "lost"
+                  ? "Lost report"
+                  : item.status === "found"
+                    ? "Found report"
+                    : "Not available from current status"}
+              </p>
+              <p>
+                Item status: {item.status === "claimed"
+                  ? "Unavailable for claims"
+                  : item.status}
+              </p>
+              <p>Location: {item.location}</p>
+              <p>Reported: {new Date(item.dateReported).toLocaleDateString()}</p>
+              <p>Archive status: {item.archivedAt ? "Archived" : "Active"}</p>
+              {item.description && <p>Description: {item.description}</p>}
+            </div>
+          ) : hasItemContext ? (
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              Item details unavailable.
+            </p>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Item ID: {claim.itemId}
+            </p>
+          )}
 
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Proof: {claim.proof}
-          </p>
+          {"proof" in claim && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Proof: {claim.proof}
+            </p>
+          )}
+          {claim.reviewedAt && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Reviewed: {new Date(claim.reviewedAt).toLocaleDateString()}
+            </p>
+          )}
+          {claim.status === "approved" && (
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Physical handover is not recorded in this system.
+            </p>
+          )}
         </>
       )}
     </div>

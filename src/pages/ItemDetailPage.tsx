@@ -54,23 +54,33 @@ function ItemDetailPage() {
 
       {data.ownerId === userId && userId !== null && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Link
-            to={`/items/${data.id}/edit`}
-            className="rounded bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-          >
-            Edit item
-          </Link>
+          {data.status === "claimed" ? (
+            <p className="basis-full text-sm text-gray-600 dark:text-gray-300">
+              Claimed items can no longer be edited.
+            </p>
+          ) : (
+            <Link
+              to={`/items/${data.id}/edit`}
+              className="rounded bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+            >
+              Edit item
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => {
-              if (window.confirm("Delete this item? This cannot be undone.")) {
+              if (
+                window.confirm(
+                  "Archive this item? It will be hidden from the public list, and claim history will be kept.",
+                )
+              ) {
                 removeItem.mutate(data.id);
               }
             }}
             disabled={removeItem.isPending}
             className="rounded bg-red-700 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-red-800 disabled:opacity-50"
           >
-            {removeItem.isPending ? "Deleting..." : "Delete item"}
+            {removeItem.isPending ? "Archiving..." : "Archive item"}
           </button>
           {removeItem.isError && (
             <p className="basis-full text-sm text-red-700">

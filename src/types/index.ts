@@ -16,6 +16,7 @@ export interface Item {
   dateReported: Date;
   status: "lost" | "found" | "claimed";
   ownerId: number;
+  archivedAt?: Date | null;
 }
 
 export interface Claim {
@@ -25,7 +26,11 @@ export interface Claim {
   claimDate: Date;
   status: "pending" | "approved" | "rejected";
   proof: string;
+  reviewedAt?: Date;
+  reviewedBy?: string;
 }
+
+export type UserRoleName = User["role"];
 
 // Partial<T> -- every field becomes optional
 export type UserUpdate = Partial<User>;
@@ -109,8 +114,8 @@ const lostItem: ItemWithOwner = {
 
   owner: {
     id: 1,
-    name: "Jane Allyson L. Paray",
-    email: "jane_allyson_paray@dlsl.edu.ph",
+    name: "Alex Example",
+    email: "alex.example@example.invalid",
     role: "student",
     isActive: true,
   },
@@ -131,21 +136,47 @@ export interface ApiResponse<T> {
 // ===== API TYPES =====
 
 // The API serializes dateReported as an ISO string.
-export type ApiItem = Omit<Item, "id" | "ownerId" | "dateReported"> & {
+export type ApiItem = Omit<
+  Item,
+  "id" | "ownerId" | "dateReported" | "archivedAt"
+> & {
   id: string;
   ownerId: string;
   dateReported: string;
+  archivedAt?: string | null;
 };
 
 // The API serializes claimDate as an ISO string and generates the Claim ID.
 export type ApiClaim = Omit<
   Claim,
-  "id" | "itemId" | "claimantId" | "claimDate"
+  "id" | "itemId" | "claimantId" | "claimDate" | "reviewedAt"
 > & {
   id: string;
   itemId: string;
   claimantId: string;
   claimDate: string;
+  reviewedAt?: string;
+};
+
+// Claims received by an item owner omit private proof details.
+export interface ApiClaimItemContext {
+  id: string;
+  title: string;
+  description: string;
+  location: string;
+  dateReported: string;
+  status: ApiItem["status"];
+  archivedAt?: string | null;
+}
+
+export type ApiReceivedClaim = Omit<ApiClaim, "proof"> & {
+  item: ApiClaimItemContext | null;
+};
+
+// Staff review responses omit claimant identity and include only the item
+// details needed to decide whether the pending Claim is still eligible.
+export type ApiReviewClaim = Omit<ApiClaim, "claimantId"> & {
+  item: ApiClaimItemContext | null;
 };
 
 // The browser chooses only the item and proof. The API supplies claim ownership,
@@ -154,10 +185,9 @@ export type NewClaim = Pick<Claim, "proof"> & {
   itemId: string;
 };
 
-export type NewItem = Pick<
-  ApiItem,
-  "title" | "description" | "location" | "status"
->;
+export type NewItem = Pick<ApiItem, "title" | "description" | "location"> & {
+  status: Exclude<ApiItem["status"], "claimed">;
+};
 
 export type ItemUpdate = Partial<NewItem>;
 export type ClaimDecisionStatus = Exclude<ApiClaim["status"], "pending">;

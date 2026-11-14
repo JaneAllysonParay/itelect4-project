@@ -7,8 +7,8 @@ import type { User } from "../types/index";
 
 export const student: User = {
   id: 1,
-  name: "Jane Allyson L. Paray",
-  email: "jane_allyson_paray@dlsl.edu.ph",
+  name: "Alex Example",
+  email: "alex.example@example.invalid",
   role: "student",
   isActive: true,
 };

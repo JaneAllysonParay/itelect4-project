@@ -18,7 +18,7 @@ function ItemCard({ item }: ItemCardProps) {
       </p>
 
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        Status: {item.status}
+        Status: {item.status === "claimed" ? "Unavailable for claims" : item.status}
       </p>
     </div>
   );

@@ -46,7 +46,7 @@ function ItemFormPage() {
         title: item.data.title,
         description: item.data.description,
         location: item.data.location,
-        status: item.data.status,
+        status: item.data.status === "claimed" ? "found" : item.data.status,
       });
     }
   }, [item.data, reset]);
@@ -80,6 +80,15 @@ function ItemFormPage() {
     return (
       <p className="text-gray-700 dark:text-gray-300">
         Only the item owner can edit this report.
+      </p>
+    );
+  }
+
+  if (id && item.data?.status === "claimed") {
+    return (
+      <p className="text-gray-700 dark:text-gray-300">
+        This item is unavailable for claims and can no longer be edited. Physical
+        handover is not recorded in this system.
       </p>
     );
   }
@@ -152,7 +161,6 @@ function ItemFormPage() {
           >
             <option value="lost">Lost</option>
             <option value="found">Found</option>
-            <option value="claimed">Claimed</option>
           </select>
         </div>
 
