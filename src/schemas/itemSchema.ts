@@ -16,7 +16,7 @@ export const itemSchema = z.object({
     .trim()
     .min(2, "Location must be at least 2 characters.")
     .max(200, "Location cannot exceed 200 characters."),
-  status: z.enum(["lost", "found", "claimed"]),
+  status: z.enum(["lost", "found"]),
 });
 
 export type ItemFormValues = z.infer<typeof itemSchema>;

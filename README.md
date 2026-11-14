@@ -6,7 +6,7 @@ A web application for the campus community to report lost and found items, brows
 
 ## Core entities
 
-- **User** — a registered student or staff account.
+- **User** — a student account created through public registration, or a staff account provisioned by an authorized operator.
 - **Item** — a lost or found item report, including its description, location, report date, status, and owner.
 - **Claim** — a signed-in user's request to claim an item, with proof of ownership.
 
@@ -38,8 +38,10 @@ The API base is read from VITE_API_URL. Set it to the backend origin only, witho
 - /items/:id — item details
 - /login — sign in
 - /register — create an account
-- /claims — protected claim workflow
+- /claims — protected claim workflow; only security or admin users can review Claims
 - /review — protected AI item-report review
+
+Public registration creates student accounts only. Staff roles are provisioned outside the frontend through an authorized operator process. Role-based controls in the UI guide the experience; the backend checks the current active account and role for every protected action.
 
 ## Architecture
 
@@ -62,7 +64,7 @@ flowchart LR
 ## Checks
 
 - npm run lint — ESLint
-- npm test — Vitest component, hook, and form validation tests
+- npm test — Vitest component, API client, authentication state, Claim review, hook, and form tests
 - npm run build — TypeScript check and production Vite build
 
 ## AI-use disclosure

@@ -73,9 +73,21 @@ function ReviewPage() {
           )}
         </div>
 
+        <p
+          id="gemini-data-use-notice"
+          role="note"
+          className="rounded-md bg-blue-50 p-3 text-sm leading-6 text-blue-900 dark:bg-blue-950/40 dark:text-blue-100"
+        >
+          Your description will be sent to Google Gemini for AI-powered feedback.
+          Do not include personal IDs, passwords, payment details, or other
+          sensitive information. AI suggestions do not verify ownership or
+          approve Claims.
+        </p>
+
         <Button
           type="submit"
           disabled={review.isPending}
+          aria-describedby="gemini-data-use-notice"
           className="justify-self-start"
         >
           {review.isPending ? "Reviewing..." : "Review item report"}

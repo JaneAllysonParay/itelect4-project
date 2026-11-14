@@ -2,6 +2,8 @@ import type {
   AiItemReportReview,
   ApiClaim,
   ApiItem,
+  ApiReceivedClaim,
+  ApiReviewClaim,
   ApiUser,
   ClaimDecisionStatus,
   AuthReply,
@@ -19,7 +21,11 @@ if (!API_URL) {
   );
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  authenticatedRequest = false,
+): Promise<T> {
   const headers = new Headers(init.headers);
   if (!headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -36,6 +42,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
+    if (response.status === 401 && authenticatedRequest) {
+      useAuthStore.getState().logout();
+    }
+
     let message = `Request failed (${response.status})`;
     try {
       const body: unknown = await response.json();
@@ -72,28 +82,32 @@ export function createItem(newItem: NewItem): Promise<ApiItem> {
   return request<ApiItem>("/api/items", {
     method: "POST",
     body: JSON.stringify(newItem),
-  });
+  }, true);
 }
 
 export function updateItem(id: string, updates: ItemUpdate): Promise<ApiItem> {
   return request<ApiItem>(`/api/items/${id}`, {
     method: "PATCH",
     body: JSON.stringify(updates),
-  });
+  }, true);
 }
 
 export function deleteItem(id: string): Promise<void> {
   return request<void>(`/api/items/${id}`, {
     method: "DELETE",
-  });
+  }, true);
 }
 
 export function fetchClaims(): Promise<ApiClaim[]> {
-  return request<ApiClaim[]>("/api/claims");
+  return request<ApiClaim[]>("/api/claims", {}, true);
 }
 
-export function fetchReceivedClaims(): Promise<ApiClaim[]> {
-  return request<ApiClaim[]>("/api/claims/received");
+export function fetchReceivedClaims(): Promise<ApiReceivedClaim[]> {
+  return request<ApiReceivedClaim[]>("/api/claims/received", {}, true);
+}
+
+export function fetchClaimsForReview(): Promise<ApiReviewClaim[]> {
+  return request<ApiReviewClaim[]>("/api/claims/review", {}, true);
 }
 
 export function updateClaimStatus(
@@ -103,21 +117,21 @@ export function updateClaimStatus(
   return request<ApiClaim>(`/api/claims/${id}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
-  });
+  }, true);
 }
 
 export function askAi(prompt: string): Promise<AiItemReportReview> {
   return request<AiItemReportReview>("/api/ai", {
     method: "POST",
     body: JSON.stringify({ prompt }),
-  });
+  }, true);
 }
 
 export function createClaim(newClaim: NewClaim): Promise<ApiClaim> {
   return request<ApiClaim>("/api/claims", {
     method: "POST",
     body: JSON.stringify(newClaim),
-  });
+  }, true);
 }
 
 export interface RegisterCredentials {

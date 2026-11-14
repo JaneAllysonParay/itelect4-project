@@ -73,8 +73,8 @@ console.log(typeof throwError);
 
 const student: User = {
   id: 1,
-  name: "Jane Allyson L. Paray",
-  email: "jane_allyson_paray@dlsl.edu.ph",
+  name: "Alex Example",
+  email: "alex.example@example.invalid",
   role: "student",
   isActive: true,
 };
@@ -164,20 +164,20 @@ console.log(itemResponse.data[0]?.title);
 
 // Partial<T>
 const patch: UserUpdate = {
-  name: "Jane Allyson L. Paray",
+  name: "Alex Example",
 };
 
 // Pick<T,K>
 const preview: UserPreview = {
   id: 1,
-  name: "Jane Allyson L. Paray",
+  name: "Alex Example",
   role: "student",
 };
 
 // Omit<T,K>
 const publicProfile: PublicUser = {
   id: 1,
-  name: "Jane Allyson L. Paray",
+  name: "Alex Example",
   role: "student",
 };
 
