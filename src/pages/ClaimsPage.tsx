@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useSearchParams } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -8,6 +9,7 @@ import type {
   ApiItem,
   ApiReceivedClaim,
   ApiReviewClaim,
+  ApiPage,
   ClaimDecisionStatus,
 } from "../types/index";
 import { claimSchema } from "../schemas/claimSchema";
@@ -18,19 +20,27 @@ import useAuthStore from "../store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isClaimableFoundItem } from "../lib/itemLifecycle";
 
 import {
-  fetchClaims,
-  fetchClaimsForReview,
+  fetchClaimsPage,
+  fetchClaimsForReviewPage,
   createClaim,
-  fetchItems,
-  fetchReceivedClaims,
+  fetchItemsPage,
+  fetchReceivedClaimsPage,
   updateClaimStatus,
+  fetchItemById,
 } from "../api/client";
 
 function ClaimsPage() {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const requestedItemId = searchParams.get("itemId") ?? "";
   const [decisionMessage, setDecisionMessage] = useState<string | null>(null);
+  const [itemPage, setItemPage] = useState(1);
+  const [myClaimsPage, setMyClaimsPage] = useState(1);
+  const [receivedPage, setReceivedPage] = useState(1);
+  const [reviewPage, setReviewPage] = useState(1);
   const userId = useAuthStore((state) => state.userId);
   const userRole = useAuthStore((state) => state.userRole);
   const canReviewClaims = userRole === "security" || userRole === "admin";
@@ -39,6 +49,7 @@ function ClaimsPage() {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<ClaimFormValues>({
     resolver: zodResolver(claimSchema),
@@ -49,31 +60,41 @@ function ClaimsPage() {
     },
   });
 
-  const items = useQuery<ApiItem[]>({
-    queryKey: ["items"],
-    queryFn: fetchItems,
+  useEffect(() => {
+    if (requestedItemId) setValue("itemId", requestedItemId, { shouldValidate: true });
+  }, [requestedItemId, setValue]);
+
+  const items = useQuery<ApiPage<ApiItem>>({
+    queryKey: ["items", "claim-selector", itemPage],
+    queryFn: () => fetchItemsPage({ page: itemPage, limit: 20, reportType: "found", lifecycleStatus: "open" }),
+  });
+  const requestedItem = useQuery<ApiItem>({
+    queryKey: ["items", requestedItemId],
+    queryFn: () => fetchItemById(requestedItemId),
+    enabled: Boolean(requestedItemId),
+  });
+
+  const myClaims = useQuery<ApiPage<ApiClaim>>({
+    queryKey: ["claims", "mine", myClaimsPage],
+    queryFn: () => fetchClaimsPage(myClaimsPage),
+  });
+
+  const receivedClaims = useQuery<ApiPage<ApiReceivedClaim>>({
+    queryKey: ["receivedClaims", receivedPage],
+    queryFn: () => fetchReceivedClaimsPage(receivedPage),
+  });
+
+  const reviewClaims = useQuery<ApiPage<ApiReviewClaim>>({
+    queryKey: ["claims", "review", "pending", reviewPage],
+    queryFn: () => fetchClaimsForReviewPage("pending", reviewPage),
+    enabled: canReviewClaims,
   });
 
   const {
-    data,
     isPending,
     isError,
     error,
-  } = useQuery<ApiClaim[]>({
-    queryKey: ["claims"],
-    queryFn: fetchClaims,
-  });
-
-  const receivedClaims = useQuery<ApiReceivedClaim[]>({
-    queryKey: ["receivedClaims"],
-    queryFn: fetchReceivedClaims,
-  });
-
-  const reviewClaims = useQuery<ApiReviewClaim[]>({
-    queryKey: ["claims", "review"],
-    queryFn: fetchClaimsForReview,
-    enabled: canReviewClaims,
-  });
+  } = myClaims;
 
   const addClaim = useMutation({
     mutationFn: createClaim,
@@ -101,7 +122,7 @@ function ClaimsPage() {
       ]);
       setDecisionMessage(
         decision.status === "approved"
-          ? "Claim approved. Physical handover is not recorded in this system."
+          ? "Claim approved and the found item reserved. Staff must separately confirm physical handover."
           : "Claim rejected.",
       );
     },
@@ -113,6 +134,11 @@ function ClaimsPage() {
       proof: values.proof,
     });
   };
+
+  const claimableItems = (items.data?.data ?? []).filter((item) => isClaimableFoundItem(item, userId));
+  if (requestedItem.data && isClaimableFoundItem(requestedItem.data, userId) && !claimableItems.some((item) => item.id === requestedItem.data!.id)) {
+    claimableItems.unshift(requestedItem.data);
+  }
 
   if (isPending) {
     return (
@@ -135,6 +161,10 @@ function ClaimsPage() {
       <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
         Claims
       </h2>
+      <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
+        Track your submissions in <Link to="/my-claims" className="text-blue-800 underline dark:text-blue-200">My Claims</Link>.
+        {canReviewClaims && <> Staff can manage all review and handover queues in <Link to="/staff/claims" className="text-blue-800 underline dark:text-blue-200">Staff Claim review</Link>.</>}
+      </p>
 
       <form
         onSubmit={handleSubmit(onSubmit)}
@@ -152,16 +182,18 @@ function ClaimsPage() {
           >
             <option value="">Select an item...</option>
 
-            {items.data
-              ?.filter(
-                (item) => item.status === "found" && item.ownerId !== userId,
-              )
-              .map((item) => (
+            {claimableItems.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.title}
                 </option>
               ))}
           </select>
+          {items.isPending && <p role="status" className="text-sm text-gray-600 dark:text-gray-300">Loading eligible found reports...</p>}
+          {items.data && <nav aria-label="Claimable item pages" className="mt-2 flex items-center justify-between text-sm">
+            <button type="button" disabled={itemPage <= 1 || items.isPending} onClick={() => setItemPage((current) => Math.max(1, current - 1))} className="underline disabled:opacity-50">Previous reports</button>
+            <span>Page {itemPage} · {items.data.totalCount ?? "count unavailable"} eligible found reports</span>
+            <button type="button" disabled={!items.data.hasMore || items.isPending} onClick={() => setItemPage((current) => current + 1)} className="underline disabled:opacity-50">More reports</button>
+          </nav>}
 
           {errors.itemId && (
             <p className="text-sm text-red-600">{errors.itemId.message}</p>
@@ -213,19 +245,24 @@ function ClaimsPage() {
             {receivedClaims.error.message}
           </p>
         )}
-        {receivedClaims.data?.length === 0 && (
+        {receivedClaims.data?.data.length === 0 && receivedPage === 1 && (
           <p className="text-sm text-gray-600 dark:text-gray-300">
             No one has claimed your items yet.
           </p>
         )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {receivedClaims.data?.map((claim) => (
+          {receivedClaims.data?.data.map((claim) => (
             <div key={claim.id}>
               <ClaimCard claim={claim} />
             </div>
           ))}
         </div>
+        {receivedClaims.data && receivedClaims.data.totalCount !== null && receivedClaims.data.totalCount > 0 && <nav aria-label="Received Claim pages" className="mt-3 flex items-center justify-between text-sm">
+          <button type="button" disabled={receivedPage <= 1} onClick={() => setReceivedPage((current) => Math.max(1, current - 1))} className="underline disabled:opacity-50">Previous</button>
+          <span>Page {receivedPage} · {receivedClaims.data.totalCount} received Claims</span>
+          <button type="button" disabled={!receivedClaims.data.hasMore} onClick={() => setReceivedPage((current) => current + 1)} className="underline disabled:opacity-50">Next</button>
+        </nav>}
       </section>
 
       {canReviewClaims && (
@@ -239,7 +276,7 @@ function ClaimsPage() {
               {reviewClaims.error.message}
             </p>
           )}
-          {reviewClaims.data?.length === 0 && (
+          {reviewClaims.data?.data.length === 0 && reviewPage === 1 && (
             <p className="text-sm text-gray-600 dark:text-gray-300">
               No pending claims need review.
             </p>
@@ -250,7 +287,7 @@ function ClaimsPage() {
             </p>
           )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {reviewClaims.data?.map((claim) => (
+            {reviewClaims.data?.data.map((claim) => (
               <div key={claim.id}>
                 <ClaimCard claim={claim} />
                 {claim.item?.archivedAt ? (
@@ -262,7 +299,7 @@ function ClaimsPage() {
                   <p className="mt-2 text-sm text-amber-700">
                     Item details are unavailable. This claim cannot be approved.
                   </p>
-                ) : claim.item.status !== "found" ? (
+              ) : !isClaimableFoundItem(claim.item as ApiItem, userId) ? (
                   <p className="mt-2 text-sm text-amber-700">
                     This item is unavailable for claims and cannot be approved.
                   </p>
@@ -274,7 +311,7 @@ function ClaimsPage() {
                       decideClaim.isPending ||
                       !claim.item ||
                       Boolean(claim.item.archivedAt) ||
-                      claim.item.status !== "found"
+                      !isClaimableFoundItem(claim.item as ApiItem, userId)
                     }
                     onClick={() =>
                       decideClaim.mutate({ id: claim.id, status: "approved" })
@@ -296,6 +333,11 @@ function ClaimsPage() {
               </div>
             ))}
           </div>
+          {reviewClaims.data && reviewClaims.data.totalCount !== null && reviewClaims.data.totalCount > 0 && <nav aria-label="Pending review Claim pages" className="mt-3 flex items-center justify-between text-sm">
+            <button type="button" disabled={reviewPage <= 1} onClick={() => setReviewPage((current) => Math.max(1, current - 1))} className="underline disabled:opacity-50">Previous</button>
+            <span>Page {reviewPage} · {reviewClaims.data.totalCount} pending Claims</span>
+            <button type="button" disabled={!reviewClaims.data.hasMore} onClick={() => setReviewPage((current) => current + 1)} className="underline disabled:opacity-50">Next</button>
+          </nav>}
           {decideClaim.isError && (
             <p className="mt-3 text-sm text-red-700">
               {decideClaim.error.message}
@@ -305,10 +347,15 @@ function ClaimsPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {data.map((claim) => (
+        {(myClaims.data?.data ?? []).map((claim) => (
           <ClaimCard key={claim.id} claim={claim} />
         ))}
       </div>
+      {myClaims.data && myClaims.data.totalCount !== null && myClaims.data.totalCount > 0 && <nav aria-label="My Claim pages" className="mt-5 flex items-center justify-between text-sm">
+        <button type="button" disabled={myClaimsPage <= 1} onClick={() => setMyClaimsPage((current) => Math.max(1, current - 1))} className="underline disabled:opacity-50">Previous</button>
+        <span>Page {myClaimsPage} · {myClaims.data.totalCount} Claims</span>
+        <button type="button" disabled={!myClaims.data.hasMore} onClick={() => setMyClaimsPage((current) => current + 1)} className="underline disabled:opacity-50">Next</button>
+      </nav>}
     </div>
   );
 }

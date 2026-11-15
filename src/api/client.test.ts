@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import useAuthStore from "../store/authStore";
-import { fetchClaims, fetchItems, loginUser } from "./client";
+import { fetchClaims, fetchItems, fetchItemsPage, loginUser } from "./client";
 
 function setSignedInSession(): void {
   useAuthStore.setState({
@@ -70,5 +70,50 @@ describe("API authentication failures", () => {
     await expect(fetchClaims()).rejects.toThrow("offline");
 
     expect(useAuthStore.getState().token).toBe("valid-session-token");
+  });
+});
+
+describe("authoritative pagination headers", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([
+    { total: 0, page: 1, length: 0, more: false },
+    { total: 1, page: 1, length: 1, more: false },
+    { total: 19, page: 1, length: 19, more: false },
+    { total: 20, page: 1, length: 20, more: false },
+    { total: 21, page: 1, length: 20, more: true },
+    { total: 40, page: 1, length: 20, more: true },
+    { total: 40, page: 2, length: 20, more: false },
+    { total: 21, page: 2, length: 1, more: false },
+  ])("uses server metadata for $total records on page $page", async ({ total, page, length, more }) => {
+    const body = Array.from({ length }, (_, index) => ({ id: `item-${index}` }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(body), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Page": String(page),
+        "X-Page-Size": "20",
+        "X-Total-Count": String(total),
+        "X-Has-More": String(more),
+      },
+    })));
+
+    const result = await fetchItemsPage({ page, limit: 20 });
+    expect(result).toMatchObject({ data: body, page, pageSize: 20, totalCount: total, hasMore: more });
+  });
+
+  it("falls back safely when pagination headers are missing or malformed", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([{ id: "item-1" }]), {
+      status: 200,
+      headers: { "X-Page": "0", "X-Page-Size": "0", "X-Total-Count": "-1", "X-Has-More": "perhaps" },
+    })));
+
+    await expect(fetchItemsPage({ page: 3, limit: 20 })).resolves.toMatchObject({
+      page: 3,
+      pageSize: 20,
+      totalCount: null,
+      hasMore: false,
+      data: [{ id: "item-1" }],
+    });
   });
 });

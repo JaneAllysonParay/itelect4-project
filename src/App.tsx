@@ -10,6 +10,9 @@ import ClaimsPage from "./pages/ClaimsPage";
 import ItemFormPage from "./pages/ItemFormPage";
 import ReviewPage from "./pages/ReviewPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import MyReportsPage from "./pages/MyReportsPage";
+import MyClaimsPage from "./pages/MyClaimsPage";
+import StaffClaimsPage from "./pages/StaffClaimsPage";
 
 function App() {
   return (
@@ -26,8 +29,12 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="claims" element={<ClaimsPage />} />
           <Route path="items/new" element={<ItemFormPage />} />
+          <Route path="report/:reportType" element={<ItemFormPage />} />
           <Route path="items/:id/edit" element={<ItemFormPage />} />
           <Route path="review" element={<ReviewPage />} />
+          <Route path="my-reports" element={<MyReportsPage />} />
+          <Route path="my-claims" element={<MyClaimsPage />} />
+          <Route path="staff/claims" element={<ProtectedRoute allowedRoles={["security", "admin"]}><StaffClaimsPage /></ProtectedRoute>} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

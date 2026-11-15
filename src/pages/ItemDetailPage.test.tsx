@@ -9,6 +9,7 @@ import ItemDetailPage from "./ItemDetailPage";
 const apiMocks = vi.hoisted(() => ({
   deleteItem: vi.fn(),
   fetchItemById: vi.fn(),
+  fetchMyItemById: vi.fn(),
 }));
 
 vi.mock("../api/client", () => apiMocks);
@@ -21,6 +22,7 @@ function renderItemDetailPage(item: ApiItem) {
     userRole: "student",
   });
   apiMocks.fetchItemById.mockResolvedValue(item);
+  apiMocks.fetchMyItemById.mockResolvedValue({ ...item, hasActiveClaims: false, canArchive: item.canArchive ?? false });
 
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -56,10 +58,10 @@ describe("Item detail edit controls", () => {
   };
 
   it("hides the edit flow for a claimed item owned by the signed-in user", async () => {
-    renderItemDetailPage({ ...item, status: "claimed" });
+    renderItemDetailPage({ ...item, status: "claimed", reportType: "found", lifecycleStatus: "reserved" });
 
     expect(
-      await screen.findByText("Claimed items can no longer be edited."),
+      await screen.findByText("Reports that have left the open state can no longer be edited."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Edit item" })).not.toBeInTheDocument();
   });
@@ -71,5 +73,38 @@ describe("Item detail edit controls", () => {
       "href",
       "/items/item-1/edit",
     );
+  });
+
+  it("offers archival for a returned report after verified handover", async () => {
+    const returned: ApiItem = {
+      ...item,
+      status: "claimed",
+      reportType: "found",
+      lifecycleStatus: "returned",
+      handoverAt: "2026-11-14T08:00:00.000Z",
+      canArchive: true,
+    };
+    apiMocks.fetchItemById.mockResolvedValue(returned);
+    apiMocks.fetchMyItemById.mockResolvedValue({ ...returned, hasActiveClaims: false, canArchive: true });
+    renderItemDetailPage(returned);
+
+    expect(await screen.findByRole("button", { name: "Archive item" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Edit item" })).not.toBeInTheDocument();
+  });
+
+  it("presents a partial canonical record as unavailable and blocks actions", async () => {
+    const partial: ApiItem = {
+      ...item,
+      reportType: "found",
+      canArchive: false,
+    };
+    renderItemDetailPage(partial);
+
+    expect(await screen.findAllByText("Historical report · type unknown")).toHaveLength(2);
+    expect(screen.getAllByText("Unavailable · historical status unknown")).toHaveLength(2);
+    expect(screen.getByText(/incomplete or inconsistent/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Submit a Claim" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Edit item" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Archive item" })).not.toBeInTheDocument();
   });
 });
