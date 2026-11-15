@@ -14,20 +14,21 @@ const lostTumbler: ApiItem = {
 };
 
 describe("Campus Lost & Found ItemCard", () => {
-  it("shows the status from the current item prop", () => {
+  it("labels the report type and distinguishes legacy claimed items from handover", () => {
     const { rerender } = render(<ItemCard item={lostTumbler} />);
 
     expect(screen.getByText("Blue Tumbler")).toBeInTheDocument();
-    expect(screen.getByText("Status: lost")).toBeInTheDocument();
+    expect(screen.getByText("Lost report")).toBeInTheDocument();
+    expect(screen.getByText("Open")).toBeInTheDocument();
 
     rerender(<ItemCard item={{ ...lostTumbler, status: "found" }} />);
 
-    expect(screen.getByText("Status: found")).toBeInTheDocument();
-    expect(screen.queryByText("Status: lost")).not.toBeInTheDocument();
+    expect(screen.getByText("Found report")).toBeInTheDocument();
 
     rerender(<ItemCard item={{ ...lostTumbler, status: "claimed" }} />);
 
-    expect(screen.getByText("Status: Unavailable for claims")).toBeInTheDocument();
+    expect(screen.getByText("Historical report · type unknown")).toBeInTheDocument();
+    expect(screen.getByText("Unavailable · historical status unknown")).toBeInTheDocument();
     expect(screen.queryByText(/returned|handed over|approved/i)).not.toBeInTheDocument();
   });
 });

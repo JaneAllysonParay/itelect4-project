@@ -8,12 +8,13 @@ import useAuthStore from "../store/authStore";
 import ClaimsPage from "./ClaimsPage";
 
 const apiMocks = vi.hoisted(() => ({
-  fetchClaims: vi.fn(),
-  fetchClaimsForReview: vi.fn(),
+  fetchClaimsPage: vi.fn(),
+  fetchClaimsForReviewPage: vi.fn(),
   createClaim: vi.fn(),
-  fetchItems: vi.fn(),
-  fetchReceivedClaims: vi.fn(),
+  fetchItemsPage: vi.fn(),
+  fetchReceivedClaimsPage: vi.fn(),
   updateClaimStatus: vi.fn(),
+  fetchItemById: vi.fn(),
 }));
 
 vi.mock("../api/client", () => apiMocks);
@@ -42,18 +43,23 @@ function renderClaimsPage(role: UserRoleName) {
   );
 }
 
+function page<T>(data: T[], totalCount = data.length, pageNumber = 1, pageSize = 20) {
+  return { data, page: pageNumber, pageSize, totalCount, hasMore: pageNumber * pageSize < totalCount };
+}
+
 describe("claim review controls", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    apiMocks.fetchClaims.mockResolvedValue([]);
-    apiMocks.fetchClaimsForReview.mockResolvedValue([]);
+    apiMocks.fetchClaimsPage.mockResolvedValue(page([]));
+    apiMocks.fetchClaimsForReviewPage.mockResolvedValue(page([]));
     apiMocks.createClaim.mockResolvedValue({});
-    apiMocks.fetchItems.mockResolvedValue([
+    apiMocks.fetchItemsPage.mockResolvedValue(page([
       {
         id: "public-item",
         title: "Public item",
         ownerId: "another-user",
         status: "found",
+        custodyStatus: "finder_reported",
       },
       {
         id: "own-item",
@@ -67,8 +73,8 @@ describe("claim review controls", () => {
         ownerId: "another-user",
         status: "claimed",
       },
-    ]);
-    apiMocks.fetchReceivedClaims.mockResolvedValue([
+    ]));
+    apiMocks.fetchReceivedClaimsPage.mockResolvedValue(page([
       {
         id: "received-claim",
         itemId: "own-item",
@@ -76,7 +82,7 @@ describe("claim review controls", () => {
         claimDate: "2026-11-14T00:00:00.000Z",
         status: "pending",
       },
-    ]);
+    ]));
     apiMocks.updateClaimStatus.mockResolvedValue({});
   });
 
@@ -84,7 +90,7 @@ describe("claim review controls", () => {
     renderClaimsPage("student");
 
     expect(
-      await screen.findByText("Status: Awaiting review"),
+      await screen.findByText("Status: Pending review"),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
@@ -92,7 +98,7 @@ describe("claim review controls", () => {
     expect(
       screen.queryByText("Claims awaiting staff review"),
     ).toBeNull();
-    expect(apiMocks.fetchClaimsForReview).not.toHaveBeenCalled();
+    expect(apiMocks.fetchClaimsForReviewPage).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(screen.getByRole("combobox", { name: "Item" })).toHaveTextContent(
@@ -108,7 +114,7 @@ describe("claim review controls", () => {
   });
 
   it("shows proof and decision controls to security reviewers", async () => {
-    apiMocks.fetchClaimsForReview.mockResolvedValue([
+    apiMocks.fetchClaimsForReviewPage.mockResolvedValue(page([
       {
         id: "review-claim",
         itemId: "public-item",
@@ -123,10 +129,11 @@ describe("claim review controls", () => {
           location: "Library",
           dateReported: "2026-11-13T00:00:00.000Z",
           status: "found",
+          custodyStatus: "finder_reported",
           archivedAt: null,
         },
       },
-    ]);
+    ]));
     renderClaimsPage("security");
 
     expect(
@@ -135,26 +142,24 @@ describe("claim review controls", () => {
     expect(
       await screen.findByText("Proof: A unique scratch on the blue base"),
     ).toBeInTheDocument();
-    expect(await screen.findByText("Item: Blue tumbler")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Blue tumbler" })).toBeInTheDocument();
     expect(screen.getByText("Report type: Found report")).toBeInTheDocument();
     expect(screen.getByText("Location: Library")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Approve" })).toBeEnabled();
     expect(screen.queryByText(/Claimant ID:/)).toBeNull();
-    expect(apiMocks.fetchClaimsForReview).toHaveBeenCalledOnce();
+    expect(apiMocks.fetchClaimsForReviewPage).toHaveBeenCalledOnce();
 
     await userEvent.click(screen.getByRole("button", { name: "Approve" }));
 
     expect(
       await screen.findByRole("status"),
-    ).toHaveTextContent(
-      "Claim approved. Physical handover is not recorded in this system.",
-    );
+    ).toHaveTextContent("Claim approved and the found item reserved. Staff must separately confirm physical handover.");
   });
 
   it("allows rejecting archived or missing-item claims but disables approval", async () => {
-    apiMocks.fetchClaimsForReview.mockResolvedValue([
+    apiMocks.fetchClaimsForReviewPage.mockResolvedValue(page([
       {
         id: "archived-claim",
         itemId: "archived-item",
@@ -179,7 +184,7 @@ describe("claim review controls", () => {
         proof: "Proof for unavailable item",
         item: null,
       },
-    ]);
+    ]));
 
     renderClaimsPage("security");
 
@@ -194,5 +199,36 @@ describe("claim review controls", () => {
     expect(screen.getAllByRole("button", { name: "Approve" })).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: "Approve" }).every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
     expect(screen.getAllByRole("button", { name: "Reject" }).every((button) => (button as HTMLButtonElement).disabled)).toBe(false);
+  });
+
+  it("lets students select a claimable found report beyond the initial 20", async () => {
+    const firstPageItems = Array.from({ length: 20 }, (_, index) => ({
+      id: `first-${index}`, title: `First page report ${index}`, description: "Found item description",
+      location: "Library", dateReported: "2026-11-14T00:00:00.000Z", status: "found" as const,
+      reportType: "found" as const, lifecycleStatus: "open" as const, ownerId: "another-user", archivedAt: null, custodyStatus: "finder_reported" as const,
+    }));
+    const outsideItem = {
+      id: "aaaaaaaaaaaaaaaaaaaaaaaa", title: "Outside first page", description: "Found item description",
+      location: "Library", dateReported: "2026-11-14T00:00:00.000Z", status: "found" as const,
+      reportType: "found" as const, lifecycleStatus: "open" as const, ownerId: "another-user", archivedAt: null, custodyStatus: "finder_reported" as const,
+    };
+    apiMocks.fetchItemsPage.mockImplementation(({ page: requestedPage }: { page?: number }) => Promise.resolve(
+      requestedPage === 2 ? page([outsideItem], 21, 2) : page(firstPageItems, 21, 1),
+    ));
+    const user = userEvent.setup();
+    renderClaimsPage("student");
+
+    const next = await screen.findByRole("button", { name: "More reports" });
+    await user.click(next);
+    const option = await screen.findByRole("option", { name: "Outside first page" });
+    await user.selectOptions(screen.getByRole("combobox", { name: "Item" }), option);
+    await user.type(screen.getByLabelText("Proof"), "A matching scratch on the lid");
+    await user.click(screen.getByRole("button", { name: "Add claim" }));
+
+    await waitFor(() => expect(apiMocks.createClaim).toHaveBeenCalled());
+    expect(apiMocks.createClaim.mock.calls[0]?.[0]).toEqual({
+      itemId: "aaaaaaaaaaaaaaaaaaaaaaaa",
+      proof: "A matching scratch on the lid",
+    });
   });
 });

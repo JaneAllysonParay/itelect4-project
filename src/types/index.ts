@@ -14,10 +14,28 @@ export interface Item {
   description: string;
   location: string;
   dateReported: Date;
+  reportType?: "lost" | "found";
+  lifecycleStatus?: "open" | "reserved" | "returned" | "resolved";
+  eventAt?: Date | null;
+  category?: ItemCategory | null;
+  custodyStatus?: CustodyStatus | null;
   status: "lost" | "found" | "claimed";
   ownerId: number;
   archivedAt?: Date | null;
 }
+
+export type ItemCategory =
+  | "electronics"
+  | "clothing"
+  | "bags"
+  | "keys"
+  | "documents"
+  | "accessories"
+  | "other";
+
+export type ReportType = "lost" | "found";
+export type LifecycleStatus = "open" | "reserved" | "returned" | "resolved";
+export type CustodyStatus = "finder_reported" | "security_reported" | "security_confirmed";
 
 export interface Claim {
   id: number;
@@ -28,6 +46,12 @@ export interface Claim {
   proof: string;
   reviewedAt?: Date;
   reviewedBy?: string;
+  decisionSource?: "staff" | "system";
+  decisionReason?: string;
+  decisionAt?: Date;
+  handoverAt?: Date;
+  handoverBy?: string;
+  pickupInstructions?: string;
 }
 
 export type UserRoleName = User["role"];
@@ -138,24 +162,44 @@ export interface ApiResponse<T> {
 // The API serializes dateReported as an ISO string.
 export type ApiItem = Omit<
   Item,
-  "id" | "ownerId" | "dateReported" | "archivedAt"
+  "id" | "ownerId" | "dateReported" | "archivedAt" | "eventAt" | "status"
 > & {
   id: string;
   ownerId: string;
   dateReported: string;
+  reportType?: ReportType | "unknown";
+  lifecycleStatus?: LifecycleStatus | "unknown";
+  status: Item["status"] | "unknown";
+  eventAt?: string | null;
   archivedAt?: string | null;
+  hasActiveClaims?: boolean;
+  canArchive?: boolean;
+  reservedAt?: string | null;
+  reservedBy?: string | null;
+  reservedClaimId?: string | null;
+  resolvedAt?: string | null;
+  resolvedBy?: string | null;
+  handoverAt?: string | null;
+  handoverBy?: string | null;
+  handoverClaimId?: string | null;
+  handoverInternalNote?: string | null;
+  custodyConfirmedAt?: string | null;
+  custodyConfirmedBy?: string | null;
 };
 
 // The API serializes claimDate as an ISO string and generates the Claim ID.
 export type ApiClaim = Omit<
   Claim,
-  "id" | "itemId" | "claimantId" | "claimDate" | "reviewedAt"
+  "id" | "itemId" | "claimantId" | "claimDate" | "reviewedAt" | "decisionAt" | "handoverAt"
 > & {
   id: string;
   itemId: string;
   claimantId: string;
   claimDate: string;
   reviewedAt?: string;
+  decisionAt?: string;
+  handoverAt?: string;
+  approvedWorkflowStatus?: "awaiting_handover" | "completed" | "legacy";
 };
 
 // Claims received by an item owner omit private proof details.
@@ -166,10 +210,20 @@ export interface ApiClaimItemContext {
   location: string;
   dateReported: string;
   status: ApiItem["status"];
+  reportType?: ApiItem["reportType"];
+  lifecycleStatus?: ApiItem["lifecycleStatus"];
+  eventAt?: string | null;
+  category?: ItemCategory | null;
+  custodyStatus?: CustodyStatus | null;
+  ownerId?: string;
   archivedAt?: string | null;
 }
 
-export type ApiReceivedClaim = Omit<ApiClaim, "proof"> & {
+export type ApiMyClaim = ApiClaim & {
+  item: ApiClaimItemContext | null;
+};
+
+export type ApiReceivedClaim = Omit<ApiClaim, "proof" | "claimantId" | "pickupInstructions" | "handoverBy"> & {
   item: ApiClaimItemContext | null;
 };
 
@@ -177,6 +231,7 @@ export type ApiReceivedClaim = Omit<ApiClaim, "proof"> & {
 // details needed to decide whether the pending Claim is still eligible.
 export type ApiReviewClaim = Omit<ApiClaim, "claimantId"> & {
   item: ApiClaimItemContext | null;
+  claimant?: { name: string; email: string };
 };
 
 // The browser chooses only the item and proof. The API supplies claim ownership,
@@ -185,11 +240,35 @@ export type NewClaim = Pick<Claim, "proof"> & {
   itemId: string;
 };
 
-export type NewItem = Pick<ApiItem, "title" | "description" | "location"> & {
-  status: Exclude<ApiItem["status"], "claimed">;
+type NewItemDetails = Pick<ApiItem, "title" | "description" | "location"> & {
+  eventAt: string;
+  category?: ItemCategory;
 };
 
-export type ItemUpdate = Partial<NewItem>;
+export type NewItem =
+  | (NewItemDetails & { reportType: "lost"; custodyStatus?: never })
+  | (NewItemDetails & { reportType: "found"; custodyStatus: Exclude<CustodyStatus, "security_confirmed"> });
+
+export type ItemUpdate = Partial<Omit<NewItem, "reportType">>;
+export interface ItemListFilters {
+  page?: number;
+  limit?: number;
+  reportType?: ReportType;
+  category?: ItemCategory;
+  location?: string;
+  lifecycleStatus?: LifecycleStatus;
+  from?: string;
+  to?: string;
+  q?: string;
+}
+
+export interface ApiPage<T> {
+  data: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number | null;
+  hasMore: boolean;
+}
 export type ClaimDecisionStatus = Exclude<ApiClaim["status"], "pending">;
 
 export type ApiUser = Omit<User, "id"> & {
