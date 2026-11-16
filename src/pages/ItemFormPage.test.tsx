@@ -131,7 +131,8 @@ describe("ItemFormPage reporting flows", () => {
       expect(screen.getByLabelText("Item title")).toHaveValue("Blue tumbler");
       expect(screen.getByLabelText("Safe public description")).toHaveValue("Blue tumbler with a silver lid");
       expect(screen.getByLabelText("Campus location where found")).toHaveValue("Library");
-      expect(screen.getByLabelText("When was it found?")).toHaveValue("2026-11-13T16:00");
+      const eventAtInput = screen.getByLabelText("When was it found?") as HTMLInputElement;
+      expect(new Date(eventAtInput.value).toISOString()).toBe(confirmedItem.eventAt);
     });
     expect(screen.queryByLabelText("Current custody information")).not.toBeInTheDocument();
     await user.clear(screen.getByLabelText("Item title"));
