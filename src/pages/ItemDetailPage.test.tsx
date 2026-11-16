@@ -100,8 +100,8 @@ describe("Item detail edit controls", () => {
     };
     renderItemDetailPage(partial);
 
-    expect(await screen.findAllByText("Historical report · type unknown")).toHaveLength(2);
-    expect(screen.getAllByText("Unavailable · historical status unknown")).toHaveLength(2);
+    expect(await screen.findAllByText("Historical report · type unknown")).toHaveLength(1);
+    expect(screen.getAllByText("Unavailable · historical status unknown")).toHaveLength(1);
     expect(screen.getByText(/incomplete or inconsistent/i)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Submit a Claim" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Edit item" })).not.toBeInTheDocument();

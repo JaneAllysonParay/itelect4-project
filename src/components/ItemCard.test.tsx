@@ -31,4 +31,28 @@ describe("Campus Lost & Found ItemCard", () => {
     expect(screen.getByText("Unavailable · historical status unknown")).toBeInTheDocument();
     expect(screen.queryByText(/returned|handed over|approved/i)).not.toBeInTheDocument();
   });
+
+  it("shows event location and local event time while distinguishing invalid dates", () => {
+    const { rerender } = render(<ItemCard item={{ ...lostTumbler, reportType: "lost", lifecycleStatus: "open", eventAt: "2026-10-24T08:00:00.000Z" }} />);
+
+    expect(screen.getByText("Reported location")).toBeInTheDocument();
+    expect(screen.getByText("E-Library")).toBeInTheDocument();
+    expect(screen.getByText("Event date")).toBeInTheDocument();
+    expect(screen.queryByText("Date unavailable")).not.toBeInTheDocument();
+
+    rerender(<ItemCard item={{ ...lostTumbler, eventAt: "not-a-date" }} />);
+    expect(screen.getByText("Date unavailable")).toBeInTheDocument();
+  });
+
+  it("shows an approved Claim reservation without calling it returned", () => {
+    render(<ItemCard item={{
+      ...lostTumbler,
+      status: "claimed",
+      reportType: "found",
+      lifecycleStatus: "reserved",
+    }} />);
+
+    expect(screen.getByText("Reserved for an approved Claim")).toBeInTheDocument();
+    expect(screen.queryByText(/returned|handover confirmed/i)).not.toBeInTheDocument();
+  });
 });
