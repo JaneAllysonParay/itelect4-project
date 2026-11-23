@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { ApiClaim } from "../types/index";
+import type { ApiClaim, ApiReviewClaim } from "../types/index";
 import ClaimCard from "./ClaimCard";
 
 const approvedClaim: ApiClaim = {
@@ -46,11 +46,38 @@ describe("ClaimCard status language", () => {
     const receivedClaim = {
       id: "received-claim", itemId: "item-1", claimantId: "another-student", claimDate: "2026-11-14T00:00:00.000Z",
       status: "pending", proof: "Should never be visible to the report owner.",
+      pickupInstructions: "Should remain private to the approved claimant and staff.",
       item: { id: "item-1", title: "Blue tumbler", description: "Blue cup", location: "Library", dateReported: "2026-11-12T08:00:00.000Z", status: "found" },
     } as unknown as ApiClaim;
     render(<ClaimCard claim={receivedClaim} context="received" />);
 
     expect(screen.getByText("Blue tumbler")).toBeInTheDocument();
     expect(screen.queryByText(/Should never be visible/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Should remain private/)).not.toBeInTheDocument();
+  });
+
+  it("shows staff Item type and lifecycle context while keeping review actions out of student views", () => {
+    const reviewClaim: ApiReviewClaim = {
+      ...approvedClaim,
+      status: "pending",
+      item: {
+        id: "item-1",
+        title: "Blue tumbler",
+        description: "Blue cup",
+        location: "Library",
+        dateReported: "2026-11-12T08:00:00.000Z",
+        reportType: "found",
+        lifecycleStatus: "open",
+        status: "found",
+      },
+    };
+    const actions = <button type="button">Staff only decision control</button>;
+
+    const { rerender } = render(<ClaimCard claim={reviewClaim} context="review" reviewActions={actions} />);
+    expect(screen.getByText("Found report · Open")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Staff only decision control" })).toBeInTheDocument();
+
+    rerender(<ClaimCard claim={reviewClaim} context="mine" reviewActions={actions} />);
+    expect(screen.queryByRole("button", { name: "Staff only decision control" })).not.toBeInTheDocument();
   });
 });

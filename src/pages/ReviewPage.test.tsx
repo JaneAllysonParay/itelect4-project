@@ -51,7 +51,9 @@ describe("AI Report Review disclosure", () => {
 
     const prompt =
       "A black wallet with a silver zipper and a small mark on its corner.";
-    await userEvent.type(screen.getByRole("textbox", { name: "Item report description" }), prompt);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("textbox", { name: "Item report description" }));
+    await user.paste(prompt);
     await userEvent.click(submit);
 
     await waitFor(() => {
