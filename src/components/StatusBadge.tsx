@@ -1,6 +1,18 @@
 import type { ReactNode } from "react";
 
-export type StatusTone = "lost" | "found" | "open" | "reserved" | "returned" | "resolved" | "unknown";
+export type StatusTone =
+  | "lost"
+  | "found"
+  | "open"
+  | "reserved"
+  | "returned"
+  | "resolved"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "completed"
+  | "unavailable"
+  | "unknown";
 
 interface StatusBadgeProps {
   tone: StatusTone;
@@ -15,6 +27,11 @@ const toneClasses: Record<StatusTone, string> = {
   reserved: "bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-100",
   returned: "bg-slate-200 text-slate-950 dark:bg-slate-700 dark:text-slate-100",
   resolved: "bg-indigo-100 text-indigo-950 dark:bg-indigo-950 dark:text-indigo-100",
+  pending: "bg-blue-100 text-blue-950 dark:bg-blue-950 dark:text-blue-100",
+  approved: "bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-100",
+  rejected: "bg-rose-100 text-rose-950 dark:bg-rose-950 dark:text-rose-100",
+  completed: "bg-emerald-100 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-100",
+  unavailable: "bg-muted text-muted-foreground",
   unknown: "bg-muted text-foreground",
 };
 

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { AlertCircle, LoaderCircle, SearchX } from "lucide-react";
 
 interface LoadingStateProps {
@@ -26,10 +26,12 @@ export function LoadingState({ label }: LoadingStateProps) {
 }
 
 export function EmptyState({ title, description, action }: EmptyStateProps) {
+  const headingId = useId();
+
   return (
-    <section className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center sm:px-8" aria-labelledby="empty-state-title">
+    <section className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center sm:px-8" aria-labelledby={headingId}>
       <SearchX aria-hidden="true" className="mx-auto mb-3 size-8 text-muted-foreground" />
-      <h2 id="empty-state-title" className="text-lg font-semibold text-card-foreground">{title}</h2>
+      <h2 id={headingId} className="text-lg font-semibold text-card-foreground">{title}</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">{description}</p>
       {action && <div className="mt-5 flex justify-center">{action}</div>}
     </section>

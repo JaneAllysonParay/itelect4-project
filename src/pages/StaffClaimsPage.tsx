@@ -129,7 +129,7 @@ function StaffClaimsPage() {
         <div className="grid gap-4">
           {claims.data?.data.map((claim) => (
             <article key={claim.id} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-              <ClaimCard claim={claim} />
+              <ClaimCard claim={claim} context="review" />
               {claim.claimant && <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">Claimant: {claim.claimant.name} · {claim.claimant.email}</p>}
               {queue === "pending" && (
                 <div className="mt-3 flex flex-wrap gap-2">
