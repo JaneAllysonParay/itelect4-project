@@ -33,8 +33,8 @@ describe("ItemFormPage reporting flows", () => {
     renderForm("/items/new", "/items/new");
 
     expect(screen.getByRole("heading", { name: "Choose a report" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Report lost property" })).toHaveAttribute("href", "/report/lost");
-    expect(screen.getByRole("link", { name: "Report found property" })).toHaveAttribute("href", "/report/found");
+    expect(screen.getByRole("link", { name: /Report lost property/ })).toHaveAttribute("href", "/report/lost");
+    expect(screen.getByRole("link", { name: /Report found property/ })).toHaveAttribute("href", "/report/found");
   });
 
   it("validates a lost report before sending it", async () => {
@@ -181,5 +181,34 @@ describe("ItemFormPage reporting flows", () => {
     ));
     const patchCall = fetchSpy.mock.calls.find(([input, init]) => String(input).endsWith("/api/items/item-legacy") && init?.method === "PATCH");
     expect(JSON.parse(String(patchCall?.[1]?.body))).toMatchObject({ custodyStatus: "finder_reported" });
+  });
+
+  it("keeps historically ambiguous reports unavailable for editing", async () => {
+    useAuthStore.setState({ token: "owner-token", userId: "owner-1", userName: "Owner", userRole: "student" });
+    const historicalItem = {
+      id: "item-old", title: "Old item", description: "Older report", location: "Hall",
+      dateReported: "2020-01-01T00:00:00.000Z", status: "unknown", reportType: "unknown", lifecycleStatus: "unknown",
+      ownerId: "owner-1", archivedAt: null,
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(historicalItem), { status: 200 }));
+    renderForm("/items/item-old/edit", "/items/:id/edit");
+
+    expect(await screen.findByRole("heading", { name: "Historical report" })).toBeInTheDocument();
+    expect(screen.getByText(/does not contain enough information to safely determine its type or lifecycle/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Item title")).not.toBeInTheDocument();
+  });
+
+  it("does not allow a non-owner to edit a report", async () => {
+    useAuthStore.setState({ token: "other-token", userId: "another-user", userName: "Other", userRole: "student" });
+    const item = {
+      id: "item-1", title: "Blue tumbler", description: "Blue tumbler with a silver lid", location: "Library",
+      dateReported: "2026-11-14T08:00:00.000Z", eventAt: "2026-11-13T08:00:00.000Z", reportType: "lost",
+      lifecycleStatus: "open", status: "lost", ownerId: "owner-1", archivedAt: null,
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(item), { status: 200 }));
+    renderForm("/items/item-1/edit", "/items/:id/edit");
+
+    expect(await screen.findByText("Only the report creator can edit this report.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Item title")).not.toBeInTheDocument();
   });
 });

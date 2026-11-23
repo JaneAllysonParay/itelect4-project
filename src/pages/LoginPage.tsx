@@ -6,9 +6,11 @@ import useAuthStore from "../store/authStore";
 import { loginUser } from "../api/client";
 import { loginSchema, type LoginFormValues } from "../schemas/authSchema";
 
+import PageHeader from "@/components/PageHeader";
+import SectionCard from "@/components/SectionCard";
+import FieldLabel from "@/components/FieldLabel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -32,58 +34,32 @@ function LoginPage() {
   });
 
   return (
-    <div className="max-w-sm">
-      <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-        Login
-      </h2>
+    <div className="mx-auto w-full max-w-lg">
+      <PageHeader title="Login" description="Sign in to submit a Claim, manage your reports, and track staff decisions." eyebrow="Campus account" className="mb-5" />
+      <SectionCard title="Sign in to your account" description="Use the email address and password associated with your campus account.">
+        <form onSubmit={handleSubmit((values) => logIn.mutate(values))} className="grid min-w-0 gap-5" aria-busy={logIn.isPending}>
+          <div className="grid min-w-0 gap-2">
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <Input id="email" type="email" autoComplete="email" {...register("email")} aria-required="true" aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "email-error" : undefined} />
+            {errors.email && <p id="email-error" className="text-sm text-destructive">{errors.email.message}</p>}
+          </div>
 
-      <form
-        onSubmit={handleSubmit((values) => logIn.mutate(values))}
-        className="grid gap-4"
-      >
-        <div className="grid gap-1.5">
-          <Label htmlFor="email" className="text-foreground">
-            Email
-          </Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            {...register("email")}
-            aria-invalid={errors.email ? true : undefined}
-          />
-          {errors.email && (
-            <p className="text-sm text-red-600">{errors.email.message}</p>
-          )}
-        </div>
+          <div className="grid min-w-0 gap-2">
+            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <Input id="password" type="password" autoComplete="current-password" {...register("password")} aria-required="true" aria-invalid={Boolean(errors.password)} aria-describedby={errors.password ? "password-error" : undefined} />
+            {errors.password && <p id="password-error" className="text-sm text-destructive">{errors.password.message}</p>}
+          </div>
 
-        <div className="grid gap-1.5">
-          <Label htmlFor="password" className="text-foreground">
-            Password
-          </Label>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            {...register("password")}
-            aria-invalid={errors.password ? true : undefined}
-          />
-          {errors.password && (
-            <p className="text-sm text-red-600">{errors.password.message}</p>
-          )}
-        </div>
+          {logIn.isError && <p role="alert" className="break-words rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">We couldn’t sign you in. {logIn.error.message}</p>}
 
-        {logIn.isError && (
-          <p className="text-sm text-red-700">{logIn.error.message}</p>
-        )}
+          <Button type="submit" disabled={logIn.isPending} className="w-full sm:w-auto sm:justify-self-start">
+            {logIn.isPending ? "Signing in..." : "Log In"}
+          </Button>
+        </form>
+      </SectionCard>
 
-        <Button type="submit" disabled={logIn.isPending}>
-          {logIn.isPending ? "Signing in..." : "Log In"}
-        </Button>
-      </form>
-
-      <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
-        No account yet? <Link className="text-blue-600 underline" to="/register">Register</Link>
+      <p className="mt-5 text-center text-sm text-muted-foreground">
+        New to Campus Lost &amp; Found? <Link className="font-medium text-primary underline underline-offset-4" to="/register">Create an account</Link>
       </p>
     </div>
   );

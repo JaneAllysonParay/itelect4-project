@@ -5,8 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import type {
-  ApiClaim,
   ApiItem,
+  ApiMyClaim,
   ApiReceivedClaim,
   ApiReviewClaim,
   ApiPage,
@@ -17,9 +17,11 @@ import type { ClaimFormValues } from "../schemas/claimSchema";
 import ClaimCard from "../components/ClaimCard";
 import useAuthStore from "../store/authStore";
 
+import PageHeader from "@/components/PageHeader";
+import SectionCard from "@/components/SectionCard";
+import { EmptyState, ErrorState, LoadingState } from "@/components/PageStates";
+import FieldLabel from "@/components/FieldLabel";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { isClaimableFoundItem } from "../lib/itemLifecycle";
 
 import {
@@ -32,6 +34,8 @@ import {
   fetchItemById,
 } from "../api/client";
 
+const fieldClassName = "min-h-11 w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
 function ClaimsPage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -41,6 +45,7 @@ function ClaimsPage() {
   const [myClaimsPage, setMyClaimsPage] = useState(1);
   const [receivedPage, setReceivedPage] = useState(1);
   const [reviewPage, setReviewPage] = useState(1);
+  const [claimSuccess, setClaimSuccess] = useState(false);
   const userId = useAuthStore((state) => state.userId);
   const userRole = useAuthStore((state) => state.userRole);
   const canReviewClaims = userRole === "security" || userRole === "admin";
@@ -54,15 +59,8 @@ function ClaimsPage() {
   } = useForm<ClaimFormValues>({
     resolver: zodResolver(claimSchema),
     mode: "onBlur",
-    defaultValues: {
-      itemId: "",
-      proof: "",
-    },
+    defaultValues: { itemId: "", proof: "" },
   });
-
-  useEffect(() => {
-    if (requestedItemId) setValue("itemId", requestedItemId, { shouldValidate: true });
-  }, [requestedItemId, setValue]);
 
   const items = useQuery<ApiPage<ApiItem>>({
     queryKey: ["items", "claim-selector", itemPage],
@@ -74,38 +72,36 @@ function ClaimsPage() {
     enabled: Boolean(requestedItemId),
   });
 
-  const myClaims = useQuery<ApiPage<ApiClaim>>({
+  useEffect(() => {
+    if (requestedItemId && requestedItem.data && isClaimableFoundItem(requestedItem.data, userId)) {
+      setValue("itemId", requestedItemId, { shouldValidate: true });
+    }
+  }, [requestedItemId, requestedItem.data, setValue, userId]);
+
+  const myClaims = useQuery<ApiPage<ApiMyClaim>>({
     queryKey: ["claims", "mine", myClaimsPage],
     queryFn: () => fetchClaimsPage(myClaimsPage),
   });
-
   const receivedClaims = useQuery<ApiPage<ApiReceivedClaim>>({
     queryKey: ["receivedClaims", receivedPage],
     queryFn: () => fetchReceivedClaimsPage(receivedPage),
   });
-
   const reviewClaims = useQuery<ApiPage<ApiReviewClaim>>({
     queryKey: ["claims", "review", "pending", reviewPage],
     queryFn: () => fetchClaimsForReviewPage("pending", reviewPage),
     enabled: canReviewClaims,
   });
 
-  const {
-    isPending,
-    isError,
-    error,
-  } = myClaims;
-
   const addClaim = useMutation({
     mutationFn: createClaim,
-
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["claims"],
-      });
-      queryClient.invalidateQueries({ queryKey: ["claims", "review"] });
-
+    onMutate: () => setClaimSuccess(false),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["claims"] }),
+        queryClient.invalidateQueries({ queryKey: ["claims", "review"] }),
+      ]);
       reset();
+      setClaimSuccess(true);
     },
   });
 
@@ -129,233 +125,167 @@ function ClaimsPage() {
   });
 
   const onSubmit = (values: ClaimFormValues): void => {
-    addClaim.mutate({
-      itemId: values.itemId,
-      proof: values.proof,
-    });
+    setClaimSuccess(false);
+    addClaim.mutate({ itemId: values.itemId, proof: values.proof });
   };
 
   const claimableItems = (items.data?.data ?? []).filter((item) => isClaimableFoundItem(item, userId));
   if (requestedItem.data && isClaimableFoundItem(requestedItem.data, userId) && !claimableItems.some((item) => item.id === requestedItem.data!.id)) {
     claimableItems.unshift(requestedItem.data);
   }
-
-  if (isPending) {
-    return (
-      <div className="animate-pulse p-6 text-gray-900 dark:text-white">
-        Loading claims...
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="rounded-lg bg-red-50 p-4 text-red-700">
-        {error.message}
-      </div>
-    );
-  }
+  const showMyClaimsPagination = Boolean(myClaims.data && (myClaimsPage > 1 || myClaims.data.hasMore || (myClaims.data.totalCount !== null && myClaims.data.totalCount > 0)));
+  const showReceivedPagination = Boolean(receivedClaims.data && (receivedPage > 1 || receivedClaims.data.hasMore || (receivedClaims.data.totalCount !== null && receivedClaims.data.totalCount > 0)));
 
   return (
-    <div>
-      <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-        Claims
-      </h2>
-      <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
-        Track your submissions in <Link to="/my-claims" className="text-blue-800 underline dark:text-blue-200">My Claims</Link>.
-        {canReviewClaims && <> Staff can manage all review and handover queues in <Link to="/staff/claims" className="text-blue-800 underline dark:text-blue-200">Staff Claim review</Link>.</>}
-      </p>
+    <div className="mx-auto max-w-6xl space-y-7">
+      <PageHeader
+        title="Claims"
+        description="Submit private ownership proof for an eligible found report, track your own submissions, or review Claims received on your reports."
+        eyebrow="Ownership and follow-up"
+        actions={(
+          <>
+            <Link to="/my-claims" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted">My Claims</Link>
+            {canReviewClaims && <Link to="/staff/claims" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">Staff Claim review</Link>}
+          </>
+        )}
+      />
 
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="mb-6 grid gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700"
-      >
-        <div className="grid gap-1.5">
-          <Label htmlFor="itemId" className="text-foreground">
-            Item
-          </Label>
+      <form onSubmit={handleSubmit(onSubmit)} aria-busy={addClaim.isPending}>
+        <SectionCard title="Submit an ownership Claim" description="Choose an eligible found report and tell authorized campus staff how you can identify the property.">
+          <div className="grid min-w-0 gap-5">
+            <div className="grid min-w-0 gap-2">
+              <FieldLabel htmlFor="itemId">Item</FieldLabel>
+              <select id="itemId" {...register("itemId")} aria-required="true" aria-invalid={Boolean(errors.itemId)} aria-describedby={errors.itemId ? "itemId-help itemId-error" : "itemId-help"} className={fieldClassName}>
+                <option value="">Select an item...</option>
+                {claimableItems.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+              </select>
+              <p id="itemId-help" className="text-sm leading-relaxed text-muted-foreground">Only eligible found reports from other users are available. The server checks eligibility again when you submit.</p>
+              {errors.itemId && <p id="itemId-error" className="text-sm text-destructive">{errors.itemId.message}</p>}
+              {items.isPending && <p role="status" className="text-sm text-muted-foreground">Loading eligible found reports...</p>}
+              {items.isError && <p role="alert" className="break-words text-sm text-destructive">Eligible reports could not be loaded. {items.error.message}</p>}
+              {requestedItemId && requestedItem.isPending && <p role="status" className="text-sm text-muted-foreground">Checking the report opened from the item details page...</p>}
+              {requestedItemId && requestedItem.isError && <p className="break-words text-sm text-muted-foreground">The requested report could not be checked. Select an eligible found report from the list.</p>}
+              {items.data && !items.isPending && !items.isError && claimableItems.length === 0 && (
+                <p className="rounded-lg border border-border bg-muted/50 p-3 text-sm leading-relaxed text-muted-foreground">
+                  {items.data.hasMore ? "There are no eligible found reports on this page. Check the next page or browse reports." : "There are no eligible found reports available on this page."}
+                </p>
+              )}
+              {items.data && (items.data.totalCount !== null || items.data.hasMore || itemPage > 1) && (
+                <nav aria-label="Claimable item pages" className="mt-1 flex flex-col gap-2 rounded-lg border border-border p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                  <Button type="button" variant="outline" size="sm" disabled={itemPage <= 1 || items.isPending} onClick={() => setItemPage((current) => Math.max(1, current - 1))}>Previous reports</Button>
+                  <span className="text-center text-muted-foreground">Page {itemPage} · {items.data.totalCount ?? "count unavailable"} eligible found reports</span>
+                  <Button type="button" variant="outline" size="sm" disabled={!items.data.hasMore || items.isPending} onClick={() => setItemPage((current) => current + 1)}>More reports</Button>
+                </nav>
+              )}
+            </div>
 
-          <select
-            id="itemId"
-            {...register("itemId")}
-            className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground"
-          >
-            <option value="">Select an item...</option>
+            <div className="grid min-w-0 gap-2">
+              <FieldLabel htmlFor="proof">Private ownership proof</FieldLabel>
+              <textarea
+                id="proof"
+                {...register("proof")}
+                aria-required="true"
+                aria-invalid={Boolean(errors.proof)}
+                aria-describedby={errors.proof ? "proof-help proof-error" : "proof-help"}
+                rows={4}
+                className={`${fieldClassName} min-h-32 resize-y`}
+                placeholder="Describe a detail that helps staff verify the item belongs to you"
+              />
+              <p id="proof-help" className="text-sm leading-relaxed text-muted-foreground">Only authorized campus staff review this proof. Keep private ownership evidence out of public report descriptions.</p>
+              {errors.proof && <p id="proof-error" className="break-words text-sm text-destructive">{errors.proof.message}</p>}
+            </div>
 
-            {claimableItems.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.title}
-                </option>
-              ))}
-          </select>
-          {items.isPending && <p role="status" className="text-sm text-gray-600 dark:text-gray-300">Loading eligible found reports...</p>}
-          {items.data && <nav aria-label="Claimable item pages" className="mt-2 flex items-center justify-between text-sm">
-            <button type="button" disabled={itemPage <= 1 || items.isPending} onClick={() => setItemPage((current) => Math.max(1, current - 1))} className="underline disabled:opacity-50">Previous reports</button>
-            <span>Page {itemPage} · {items.data.totalCount ?? "count unavailable"} eligible found reports</span>
-            <button type="button" disabled={!items.data.hasMore || items.isPending} onClick={() => setItemPage((current) => current + 1)} className="underline disabled:opacity-50">More reports</button>
-          </nav>}
-
-          {errors.itemId && (
-            <p className="text-sm text-red-600">{errors.itemId.message}</p>
-          )}
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="proof" className="text-foreground">
-            Proof
-          </Label>
-
-          <Input
-            id="proof"
-            {...register("proof")}
-            aria-invalid={errors.proof ? true : undefined}
-            placeholder="Describe your proof of ownership"
-          />
-
-          {errors.proof && (
-            <p className="text-sm text-red-600">{errors.proof.message}</p>
-          )}
-        </div>
-
-        <Button
-          type="submit"
-          disabled={addClaim.isPending}
-          className="justify-self-start"
-        >
-          {addClaim.isPending ? "Saving..." : "Add claim"}
-        </Button>
+            {addClaim.isError && <p role="alert" className="break-words rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Your Claim could not be submitted. {addClaim.error.message}</p>}
+            {claimSuccess && <p role="status" className="break-words rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm leading-relaxed text-foreground">Claim submitted. Authorized staff will review your proof. This does not approve the Claim or authorize pickup. <Link to="/my-claims" className="font-medium text-primary underline underline-offset-4">Track it in My Claims</Link>.</p>}
+            <Button type="submit" disabled={addClaim.isPending || claimableItems.length === 0} className="w-full sm:w-auto sm:justify-self-start">
+              {addClaim.isPending ? "Submitting Claim..." : "Submit Claim"}
+            </Button>
+          </div>
+        </SectionCard>
       </form>
 
-      {items.isError && (
-        <p className="mb-4 text-sm text-red-700">{items.error.message}</p>
-      )}
-
-      {addClaim.isError && (
-        <p className="mb-4 text-sm text-red-700">{addClaim.error.message}</p>
-      )}
-
-      <section className="mb-8">
-        <h3 className="mb-3 text-xl font-semibold text-gray-900 dark:text-white">
-          Claims on your items
-        </h3>
-
-        {receivedClaims.isPending && <p>Loading received claims...</p>}
-        {receivedClaims.isError && (
-          <p className="mb-4 text-sm text-red-700">
-            {receivedClaims.error.message}
-          </p>
-        )}
-        {receivedClaims.data?.data.length === 0 && receivedPage === 1 && (
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            No one has claimed your items yet.
-          </p>
-        )}
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {receivedClaims.data?.data.map((claim) => (
-            <div key={claim.id}>
-              <ClaimCard claim={claim} />
-            </div>
-          ))}
+      <section aria-labelledby="received-claims-heading" className="space-y-4">
+        <header>
+          <h2 id="received-claims-heading" className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Claims on your reports</h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">This view shows Claim status and report details. Private ownership proof is not shown here.</p>
+        </header>
+        {receivedClaims.isPending && <LoadingState label="Loading Claims on your reports..." />}
+        {receivedClaims.isError && <ErrorState title="Claims on your reports could not be loaded" description={receivedClaims.error.message || "Please try again."} />}
+        {receivedClaims.data?.data.length === 0 && receivedPage === 1 && <EmptyState title="No Claims received" description="Claims submitted on your reports will appear here. Private proof stays limited to authorized review." />}
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">
+          {receivedClaims.data?.data.map((claim) => <ClaimCard key={claim.id} claim={claim} context="received" />)}
         </div>
-        {receivedClaims.data && receivedClaims.data.totalCount !== null && receivedClaims.data.totalCount > 0 && <nav aria-label="Received Claim pages" className="mt-3 flex items-center justify-between text-sm">
-          <button type="button" disabled={receivedPage <= 1} onClick={() => setReceivedPage((current) => Math.max(1, current - 1))} className="underline disabled:opacity-50">Previous</button>
-          <span>Page {receivedPage} · {receivedClaims.data.totalCount} received Claims</span>
-          <button type="button" disabled={!receivedClaims.data.hasMore} onClick={() => setReceivedPage((current) => current + 1)} className="underline disabled:opacity-50">Next</button>
-        </nav>}
+        {showReceivedPagination && receivedClaims.data && (
+          <nav aria-label="Received Claim pages" className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+            <Button type="button" variant="outline" disabled={receivedPage <= 1 || receivedClaims.isPending} onClick={() => setReceivedPage((current) => Math.max(1, current - 1))} className="w-full sm:w-auto">Previous page</Button>
+            <p className="text-center text-sm text-muted-foreground">Page {receivedPage} · {receivedClaims.data.totalCount ?? "count unavailable"} received Claims</p>
+            <Button type="button" variant="outline" disabled={!receivedClaims.data.hasMore || receivedClaims.isPending} onClick={() => setReceivedPage((current) => current + 1)} className="w-full sm:w-auto">Next page</Button>
+          </nav>
+        )}
       </section>
 
       {canReviewClaims && (
-        <section className="mb-8">
-          <h3 className="mb-3 text-xl font-semibold text-gray-900 dark:text-white">
-            Claims awaiting staff review
-          </h3>
-          {reviewClaims.isPending && <p>Loading claims for review...</p>}
-          {reviewClaims.isError && (
-            <p className="mb-4 text-sm text-red-700">
-              {reviewClaims.error.message}
-            </p>
-          )}
-          {reviewClaims.data?.data.length === 0 && reviewPage === 1 && (
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              No pending claims need review.
-            </p>
-          )}
-          {decisionMessage && (
-            <p role="status" className="mb-3 text-sm text-green-700">
-              {decisionMessage}
-            </p>
-          )}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <section aria-labelledby="review-claims-heading" className="space-y-4">
+          <header>
+            <h2 id="review-claims-heading" className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Claims awaiting staff review</h2>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Staff review controls and eligibility checks remain available for authorized roles.</p>
+          </header>
+          {reviewClaims.isPending && <LoadingState label="Loading claims for review..." />}
+          {reviewClaims.isError && <ErrorState title="Claims for review could not be loaded" description={reviewClaims.error.message || "Please try again."} />}
+          {reviewClaims.data?.data.length === 0 && reviewPage === 1 && <EmptyState title="No pending Claims" description="There are no pending Claims on this page of the staff review queue." />}
+          {decisionMessage && <p role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-foreground">{decisionMessage}</p>}
+          {decideClaim.isError && <ErrorState title="The Claim decision could not be saved" description={decideClaim.error.message || "Please try again."} />}
+          <div className="grid min-w-0 gap-4 md:grid-cols-2">
             {reviewClaims.data?.data.map((claim) => (
-              <div key={claim.id}>
-                <ClaimCard claim={claim} />
+              <article key={claim.id} className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+                <ClaimCard claim={claim} context="review" />
                 {claim.item?.archivedAt ? (
-                  <p className="mt-2 text-sm text-amber-700">
-                    This item is archived. The pending claim can be rejected but
-                    cannot be approved.
-                  </p>
+                  <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-foreground">This item is archived. The pending claim can be rejected but cannot be approved.</p>
                 ) : claim.item === null ? (
-                  <p className="mt-2 text-sm text-amber-700">
-                    Item details are unavailable. This claim cannot be approved.
-                  </p>
-              ) : !isClaimableFoundItem(claim.item as ApiItem, userId) ? (
-                  <p className="mt-2 text-sm text-amber-700">
-                    This item is unavailable for claims and cannot be approved.
-                  </p>
+                  <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-foreground">Item details are unavailable. This claim cannot be approved.</p>
+                ) : !isClaimableFoundItem(claim.item as ApiItem, userId) ? (
+                  <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-foreground">This item is unavailable for claims and cannot be approved.</p>
                 ) : null}
-                <div className="mt-2 flex gap-2">
+                <div className="mt-3 flex flex-wrap gap-2">
                   <Button
                     type="button"
-                    disabled={
-                      decideClaim.isPending ||
-                      !claim.item ||
-                      Boolean(claim.item.archivedAt) ||
-                      !isClaimableFoundItem(claim.item as ApiItem, userId)
-                    }
-                    onClick={() =>
-                      decideClaim.mutate({ id: claim.id, status: "approved" })
-                    }
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={decideClaim.isPending}
-                    onClick={() =>
-                      decideClaim.mutate({ id: claim.id, status: "rejected" })
-                    }
-                  >
-                    Reject
-                  </Button>
+                    disabled={decideClaim.isPending || !claim.item || Boolean(claim.item.archivedAt) || !isClaimableFoundItem(claim.item as ApiItem, userId)}
+                    onClick={() => decideClaim.mutate({ id: claim.id, status: "approved" })}
+                  >Approve</Button>
+                  <Button type="button" variant="outline" disabled={decideClaim.isPending} onClick={() => decideClaim.mutate({ id: claim.id, status: "rejected" })}>Reject</Button>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
-          {reviewClaims.data && reviewClaims.data.totalCount !== null && reviewClaims.data.totalCount > 0 && <nav aria-label="Pending review Claim pages" className="mt-3 flex items-center justify-between text-sm">
-            <button type="button" disabled={reviewPage <= 1} onClick={() => setReviewPage((current) => Math.max(1, current - 1))} className="underline disabled:opacity-50">Previous</button>
-            <span>Page {reviewPage} · {reviewClaims.data.totalCount} pending Claims</span>
-            <button type="button" disabled={!reviewClaims.data.hasMore} onClick={() => setReviewPage((current) => current + 1)} className="underline disabled:opacity-50">Next</button>
-          </nav>}
-          {decideClaim.isError && (
-            <p className="mt-3 text-sm text-red-700">
-              {decideClaim.error.message}
-            </p>
+          {reviewClaims.data && (reviewPage > 1 || reviewClaims.data.hasMore || (reviewClaims.data.totalCount !== null && reviewClaims.data.totalCount > 0)) && (
+            <nav aria-label="Pending review Claim pages" className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+              <Button type="button" variant="outline" disabled={reviewPage <= 1 || reviewClaims.isPending} onClick={() => setReviewPage((current) => Math.max(1, current - 1))} className="w-full sm:w-auto">Previous page</Button>
+              <p className="text-center text-sm text-muted-foreground">Page {reviewPage} · {reviewClaims.data.totalCount ?? "count unavailable"} pending Claims</p>
+              <Button type="button" variant="outline" disabled={!reviewClaims.data.hasMore || reviewClaims.isPending} onClick={() => setReviewPage((current) => current + 1)} className="w-full sm:w-auto">Next page</Button>
+            </nav>
           )}
         </section>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {(myClaims.data?.data ?? []).map((claim) => (
-          <ClaimCard key={claim.id} claim={claim} />
-        ))}
-      </div>
-      {myClaims.data && myClaims.data.totalCount !== null && myClaims.data.totalCount > 0 && <nav aria-label="My Claim pages" className="mt-5 flex items-center justify-between text-sm">
-        <button type="button" disabled={myClaimsPage <= 1} onClick={() => setMyClaimsPage((current) => Math.max(1, current - 1))} className="underline disabled:opacity-50">Previous</button>
-        <span>Page {myClaimsPage} · {myClaims.data.totalCount} Claims</span>
-        <button type="button" disabled={!myClaims.data.hasMore} onClick={() => setMyClaimsPage((current) => current + 1)} className="underline disabled:opacity-50">Next</button>
-      </nav>}
+      <section aria-labelledby="my-submissions-heading" className="space-y-4">
+        <header>
+          <h2 id="my-submissions-heading" className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Your submissions</h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">See the Claims you submitted, including pending staff decisions.</p>
+        </header>
+        {myClaims.isPending && <LoadingState label="Loading your Claim submissions..." />}
+        {myClaims.isError && <ErrorState title="Your Claim submissions could not be loaded" description={myClaims.error.message || "Please try again."} />}
+        {myClaims.data?.data.length === 0 && myClaimsPage === 1 && <EmptyState title="No Claim submissions yet" description="When you submit a Claim, its status and any supported handover record will appear here." />}
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">
+          {myClaims.data?.data.map((claim) => <ClaimCard key={claim.id} claim={claim} context="mine" />)}
+        </div>
+        {showMyClaimsPagination && myClaims.data && (
+          <nav aria-label="My Claim pages" className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+            <Button type="button" variant="outline" disabled={myClaimsPage <= 1 || myClaims.isPending} onClick={() => setMyClaimsPage((current) => Math.max(1, current - 1))} className="w-full sm:w-auto">Previous page</Button>
+            <p className="text-center text-sm text-muted-foreground">Page {myClaimsPage} · {myClaims.data.totalCount ?? "count unavailable"} Claims</p>
+            <Button type="button" variant="outline" disabled={!myClaims.data.hasMore || myClaims.isPending} onClick={() => setMyClaimsPage((current) => current + 1)} className="w-full sm:w-auto">Next page</Button>
+          </nav>
+        )}
+      </section>
     </div>
   );
 }

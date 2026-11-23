@@ -16,22 +16,41 @@ describe("ClaimCard status language", () => {
   it("shows a neutral message for an approved claim without canonical workflow evidence", () => {
     render(<ClaimCard claim={approvedClaim} />);
 
-    expect(screen.getByText("Status: Historical approved Claim")).toBeInTheDocument();
-    expect(screen.getByText("Historical approved Claim — contact campus security to verify its status.")).toBeInTheDocument();
+    expect(screen.getByText("Historical approved Claim")).toBeInTheDocument();
+    expect(screen.getByText("This approved Claim does not have a reliable handover record. Contact campus staff to verify its status.")).toBeInTheDocument();
     expect(screen.queryByText(/awaiting physical handover|Handover completed/i)).toBeNull();
   });
 
   it("labels an approved canonical reservation as awaiting handover", () => {
     render(<ClaimCard claim={{ ...approvedClaim, approvedWorkflowStatus: "awaiting_handover" }} />);
 
-    expect(screen.getByText("Status: Approved · awaiting physical handover")).toBeInTheDocument();
-    expect(screen.getByText("Approved — awaiting physical handover.")).toBeInTheDocument();
+    expect(screen.getByText("Approved · awaiting physical handover")).toBeInTheDocument();
+    expect(screen.getByText("The Claim was approved and the Item reserved, but physical handover is not yet confirmed.")).toBeInTheDocument();
   });
 
   it("labels only a fully recorded handover as completed", () => {
     render(<ClaimCard claim={{ ...approvedClaim, approvedWorkflowStatus: "completed", handoverAt: "2026-11-14T08:00:00.000Z" }} />);
 
-    expect(screen.getByText("Status: Handover completed")).toBeInTheDocument();
-    expect(screen.getByText("Handover completed.")).toBeInTheDocument();
+    expect(screen.getByText("Handover completed")).toBeInTheDocument();
+    expect(screen.getByText("The physical handover was recorded.")).toBeInTheDocument();
+  });
+
+  it("does not label completion without a recorded handover timestamp", () => {
+    render(<ClaimCard claim={{ ...approvedClaim, approvedWorkflowStatus: "completed" }} />);
+
+    expect(screen.getByText("Historical approved Claim")).toBeInTheDocument();
+    expect(screen.queryByText("Handover completed")).not.toBeInTheDocument();
+  });
+
+  it("does not expose received-Claim proof even if it appears in unexpected response data", () => {
+    const receivedClaim = {
+      id: "received-claim", itemId: "item-1", claimantId: "another-student", claimDate: "2026-11-14T00:00:00.000Z",
+      status: "pending", proof: "Should never be visible to the report owner.",
+      item: { id: "item-1", title: "Blue tumbler", description: "Blue cup", location: "Library", dateReported: "2026-11-12T08:00:00.000Z", status: "found" },
+    } as unknown as ApiClaim;
+    render(<ClaimCard claim={receivedClaim} context="received" />);
+
+    expect(screen.getByText("Blue tumbler")).toBeInTheDocument();
+    expect(screen.queryByText(/Should never be visible/)).not.toBeInTheDocument();
   });
 });

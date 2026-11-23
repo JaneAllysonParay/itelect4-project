@@ -19,7 +19,7 @@ const apiMocks = vi.hoisted(() => ({
 
 vi.mock("../api/client", () => apiMocks);
 
-function renderClaimsPage(role: UserRoleName) {
+function renderClaimsPage(role: UserRoleName, path = "/claims") {
   useAuthStore.setState({
     token: "test-token",
     userId: "owner-1",
@@ -36,7 +36,7 @@ function renderClaimsPage(role: UserRoleName) {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <ClaimsPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -49,7 +49,7 @@ function page<T>(data: T[], totalCount = data.length, pageNumber = 1, pageSize =
 
 describe("claim review controls", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     apiMocks.fetchClaimsPage.mockResolvedValue(page([]));
     apiMocks.fetchClaimsForReviewPage.mockResolvedValue(page([]));
     apiMocks.createClaim.mockResolvedValue({});
@@ -81,6 +81,7 @@ describe("claim review controls", () => {
         claimantId: "another-user",
         claimDate: "2026-11-14T00:00:00.000Z",
         status: "pending",
+        proof: "Private proof must stay hidden",
       },
     ]));
     apiMocks.updateClaimStatus.mockResolvedValue({});
@@ -90,11 +91,12 @@ describe("claim review controls", () => {
     renderClaimsPage("student");
 
     expect(
-      await screen.findByText("Status: Pending review"),
+      await screen.findByText("Pending review"),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
     expect(screen.queryByText(/Proof:/)).toBeNull();
+    expect(screen.queryByText("Private proof must stay hidden")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Claims awaiting staff review"),
     ).toBeNull();
@@ -140,7 +142,7 @@ describe("claim review controls", () => {
       await screen.findByText("Claims awaiting staff review"),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText("Proof: A unique scratch on the blue base"),
+      await screen.findByText("A unique scratch on the blue base"),
     ).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Blue tumbler" })).toBeInTheDocument();
     expect(screen.getByText("Report type: Found report")).toBeInTheDocument();
@@ -222,13 +224,101 @@ describe("claim review controls", () => {
     await user.click(next);
     const option = await screen.findByRole("option", { name: "Outside first page" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Item" }), option);
-    await user.type(screen.getByLabelText("Proof"), "A matching scratch on the lid");
-    await user.click(screen.getByRole("button", { name: "Add claim" }));
+    await user.type(screen.getByLabelText("Private ownership proof"), "A matching scratch on the lid");
+    await user.click(screen.getByRole("button", { name: "Submit Claim" }));
 
     await waitFor(() => expect(apiMocks.createClaim).toHaveBeenCalled());
     expect(apiMocks.createClaim.mock.calls[0]?.[0]).toEqual({
       itemId: "aaaaaaaaaaaaaaaaaaaaaaaa",
       proof: "A matching scratch on the lid",
     });
+  });
+
+  it("selects a direct-linked eligible Item even when it is outside the first page", async () => {
+    const outsideItem = {
+      id: "bbbbbbbbbbbbbbbbbbbbbbbb", title: "Direct-linked report", description: "Found item description", location: "Library",
+      dateReported: "2026-11-14T00:00:00.000Z", status: "found" as const, reportType: "found" as const,
+      lifecycleStatus: "open" as const, ownerId: "another-user", archivedAt: null, custodyStatus: "security_reported" as const,
+    };
+    const firstPageItems = Array.from({ length: 20 }, (_, index) => ({
+      ...outsideItem, id: `first-${index}`, title: `First page report ${index}`,
+    }));
+    apiMocks.fetchItemsPage.mockResolvedValue(page(firstPageItems, 21, 1));
+    apiMocks.fetchItemById.mockResolvedValue(outsideItem);
+    const user = userEvent.setup();
+    renderClaimsPage("student", `/claims?itemId=${outsideItem.id}`);
+
+    const itemSelect = await screen.findByRole("combobox", { name: "Item" });
+    await waitFor(() => expect(itemSelect).toHaveValue(outsideItem.id));
+    expect(screen.getByRole("option", { name: "Direct-linked report" })).toBeInTheDocument();
+    await user.selectOptions(itemSelect, outsideItem.id);
+    const proofInput = screen.getByLabelText("Private ownership proof");
+    await user.type(proofInput, "A distinct mark on the base");
+    const submitButton = screen.getByRole("button", { name: "Submit Claim" });
+    expect(submitButton).toBeEnabled();
+    expect(itemSelect).toHaveValue(outsideItem.id);
+    expect(proofInput).toHaveValue("A distinct mark on the base");
+    await user.click(submitButton);
+
+    await waitFor(() => expect(apiMocks.createClaim).toHaveBeenCalled());
+    expect(apiMocks.createClaim.mock.calls[0]?.[0]).toEqual({ itemId: outsideItem.id, proof: "A distinct mark on the base" });
+  });
+
+  it("shows truthful success feedback only after the API confirms submission", async () => {
+    const itemId = "aaaaaaaaaaaaaaaaaaaaaaaa";
+    apiMocks.fetchItemsPage.mockResolvedValue(page([
+      { id: itemId, title: "Public item", ownerId: "another-user", status: "found", custodyStatus: "finder_reported" },
+    ]));
+    apiMocks.createClaim.mockResolvedValue({ id: "new-claim", status: "pending" });
+    const user = userEvent.setup();
+    renderClaimsPage("student");
+
+    const itemSelect = await screen.findByRole("combobox", { name: "Item" });
+    await screen.findByRole("option", { name: "Public item" });
+    await user.selectOptions(itemSelect, itemId);
+    await user.type(screen.getByLabelText("Private ownership proof"), "A distinct stitch by the handle");
+    await user.click(screen.getByRole("button", { name: "Submit Claim" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Claim submitted. Authorized staff will review your proof. This does not approve the Claim or authorize pickup.");
+    expect(screen.getByRole("link", { name: "Track it in My Claims" })).toHaveAttribute("href", "/my-claims");
+  });
+
+  it("shows a server error after a failed Claim submission", async () => {
+    const itemId = "aaaaaaaaaaaaaaaaaaaaaaaa";
+    apiMocks.fetchItemsPage.mockResolvedValue(page([
+      { id: itemId, title: "Public item", ownerId: "another-user", status: "found", custodyStatus: "finder_reported" },
+    ]));
+    apiMocks.createClaim.mockRejectedValue(new Error("Item is no longer available."));
+    const user = userEvent.setup();
+    renderClaimsPage("student");
+
+    const itemSelect = await screen.findByRole("combobox", { name: "Item" });
+    await screen.findByRole("option", { name: "Public item" });
+    await user.selectOptions(itemSelect, itemId);
+    await user.type(screen.getByLabelText("Private ownership proof"), "A distinct stitch by the handle");
+    await user.click(screen.getByRole("button", { name: "Submit Claim" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Item is no longer available.");
+  });
+
+  it("labels the received, staff-review, and submitted empty queues independently", async () => {
+    apiMocks.fetchReceivedClaimsPage.mockResolvedValue(page([]));
+    renderClaimsPage("security");
+
+    const sections = await Promise.all([
+      screen.findByRole("region", { name: "No Claims received" }),
+      screen.findByRole("region", { name: "No pending Claims" }),
+      screen.findByRole("region", { name: "No Claim submissions yet" }),
+    ]);
+    const headingIds = sections.map((section) => {
+      const heading = section.querySelector("h2");
+      expect(heading).not.toBeNull();
+      expect(section).toHaveAttribute("aria-labelledby", heading?.id);
+      return heading!.id;
+    });
+
+    expect(new Set(headingIds).size).toBe(sections.length);
+    expect(new Set(Array.from(document.querySelectorAll("[id]"), (element) => element.id)).size)
+      .toBe(document.querySelectorAll("[id]").length);
   });
 });

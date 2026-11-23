@@ -4,7 +4,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import PageHeader from "@/components/PageHeader";
+import SectionCard from "@/components/SectionCard";
+import FieldLabel from "@/components/FieldLabel";
 import { loginUser, registerUser } from "../api/client";
 import { registerSchema, type RegisterFormValues } from "../schemas/authSchema";
 import useAuthStore from "../store/authStore";
@@ -34,73 +36,39 @@ function RegisterPage() {
   });
 
   return (
-    <div className="max-w-sm">
-      <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-        Register
-      </h2>
+    <div className="mx-auto w-full max-w-lg">
+      <PageHeader title="Create your account" description="Use your campus details to report property, submit ownership proof privately, and follow your Claim history." eyebrow="Campus account" className="mb-5" />
+      <SectionCard title="Student account details" description="Your account is created with the role assigned by the existing registration service.">
+        <form onSubmit={handleSubmit((values) => signUp.mutate(values))} className="grid min-w-0 gap-5" aria-busy={signUp.isPending}>
+          <div className="grid min-w-0 gap-2">
+            <FieldLabel htmlFor="name">Name</FieldLabel>
+            <Input id="name" autoComplete="name" {...register("name")} aria-required="true" aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "name-error" : undefined} />
+            {errors.name && <p id="name-error" className="text-sm text-destructive">{errors.name.message}</p>}
+          </div>
 
-      <form
-        onSubmit={handleSubmit((values) => signUp.mutate(values))}
-        className="grid gap-4"
-      >
-        <div className="grid gap-1.5">
-          <Label htmlFor="name" className="text-foreground">
-            Name
-          </Label>
-          <Input
-            id="name"
-            autoComplete="name"
-            {...register("name")}
-            aria-invalid={errors.name ? true : undefined}
-          />
-          {errors.name && (
-            <p className="text-sm text-red-600">{errors.name.message}</p>
-          )}
-        </div>
+          <div className="grid min-w-0 gap-2">
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <Input id="email" type="email" autoComplete="email" {...register("email")} aria-required="true" aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "email-error" : undefined} />
+            {errors.email && <p id="email-error" className="text-sm text-destructive">{errors.email.message}</p>}
+          </div>
 
-        <div className="grid gap-1.5">
-          <Label htmlFor="email" className="text-foreground">
-            Email
-          </Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            {...register("email")}
-            aria-invalid={errors.email ? true : undefined}
-          />
-          {errors.email && (
-            <p className="text-sm text-red-600">{errors.email.message}</p>
-          )}
-        </div>
+          <div className="grid min-w-0 gap-2">
+            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <Input id="password" type="password" autoComplete="new-password" {...register("password")} aria-required="true" aria-invalid={Boolean(errors.password)} aria-describedby={errors.password ? "password-help password-error" : "password-help"} />
+            <p id="password-help" className="text-sm text-muted-foreground">Use at least 8 characters.</p>
+            {errors.password && <p id="password-error" className="text-sm text-destructive">{errors.password.message}</p>}
+          </div>
 
-        <div className="grid gap-1.5">
-          <Label htmlFor="password" className="text-foreground">
-            Password
-          </Label>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            {...register("password")}
-            aria-invalid={errors.password ? true : undefined}
-          />
-          {errors.password && (
-            <p className="text-sm text-red-600">{errors.password.message}</p>
-          )}
-        </div>
+          {signUp.isError && <p role="alert" className="break-words rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">We couldn’t create your account. {signUp.error.message}</p>}
 
-        {signUp.isError && (
-          <p className="text-sm text-red-700">{signUp.error.message}</p>
-        )}
+          <Button type="submit" disabled={signUp.isPending} className="w-full sm:w-auto sm:justify-self-start">
+            {signUp.isPending ? "Creating account..." : "Create account"}
+          </Button>
+        </form>
+      </SectionCard>
 
-        <Button type="submit" disabled={signUp.isPending}>
-          {signUp.isPending ? "Creating account..." : "Create account"}
-        </Button>
-      </form>
-
-      <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
-        Already have an account? <Link className="text-blue-600 underline" to="/login">Login</Link>
+      <p className="mt-5 text-center text-sm text-muted-foreground">
+        Already have an account? <Link className="font-medium text-primary underline underline-offset-4" to="/login">Sign in</Link>
       </p>
     </div>
   );

@@ -36,9 +36,9 @@ describe("MyReportsPage", () => {
 
     expect(await screen.findByRole("heading", { name: "My Reports" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Lost keys" })).toBeInTheDocument();
-    expect(screen.getAllByText("Date reported:").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Date reported").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "I recovered this item" })).toBeInTheDocument();
-    expect(screen.getByText(/Editing and archiving are paused/i)).toBeInTheDocument();
+    expect(screen.getByText(/A Claim may still be active or its state could not be verified, so editing is paused/i)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Edit report" })).toHaveLength(1);
     expect(screen.getByRole("link", { name: "Edit report" })).toHaveAttribute("href", "/items/lost-1/edit");
     expect(screen.queryByRole("link", { name: "Archived notebook" })).not.toBeInTheDocument();
@@ -64,5 +64,42 @@ describe("MyReportsPage", () => {
 
     expect(await screen.findByText(/Claim and handover records need staff reconciliation before archival/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Archive report" })).not.toBeInTheDocument();
+  });
+
+  it("keeps editing paused for unknown Claim state and follows server canArchive authority", async () => {
+    apiMocks.fetchMyItemsPage.mockResolvedValue({ data: [
+      { id: "unknown-claims", title: "Found charger", description: "Black charger", location: "Library", dateReported: "2026-11-14T08:00:00.000Z", reportType: "found", lifecycleStatus: "open", status: "found", ownerId: "student-1", archivedAt: null, canArchive: true },
+    ], page: 1, pageSize: 20, totalCount: 1, hasMore: false });
+    renderPage();
+
+    expect(await screen.findByText(/editing is paused/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Edit report" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archive report" })).toBeInTheDocument();
+  });
+
+  it("does not resolve or archive after confirmation is cancelled", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "I recovered this item" }));
+    await user.click(screen.getAllByRole("button", { name: "Archive report" })[0]!);
+
+    expect(apiMocks.resolveItem).not.toHaveBeenCalled();
+    expect(apiMocks.deleteItem).not.toHaveBeenCalled();
+  });
+
+  it("keeps pagination available on an empty later page when the server count is unknown", async () => {
+    apiMocks.fetchMyItemsPage.mockResolvedValueOnce({ data: [
+      { id: "one", title: "One report", description: "Lost book", location: "Hall", dateReported: "2026-11-13T08:00:00.000Z", reportType: "lost", lifecycleStatus: "open", status: "lost", ownerId: "student-1", archivedAt: null, hasActiveClaims: false, canArchive: false },
+    ], page: 1, pageSize: 1, totalCount: null, hasMore: true });
+    apiMocks.fetchMyItemsPage.mockResolvedValueOnce({ data: [], page: 2, pageSize: 1, totalCount: null, hasMore: false });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Next page" }));
+    expect(await screen.findByText("No reports remain on this page.")).toBeInTheDocument();
+    expect(apiMocks.fetchMyItemsPage).toHaveBeenNthCalledWith(2, { limit: 20, page: 2 });
+    expect(screen.getByRole("button", { name: "Previous page" })).toBeEnabled();
   });
 });
